@@ -14,5 +14,7 @@ GGUF Editor D++ is an Open Source project developed by enthusiasts for the Machi
 You can also contribute by reporting bugs, suggesting improvements, or creating mapping files for new architectures.
 
 ---
+[ 🏠 Home ](index.md)  [⚙️ Features ](features.md)  [📘 User Guide](usage.md)  [🔧 Technical ](technical.md) [ ❤️ Support ](donate.md) 
+---
 
 © 2026 GGUF Editor D++ By ABBN.
