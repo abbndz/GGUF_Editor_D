@@ -1,0 +1,25 @@
+# Llama 4 Mapping
+model.embed_tokens.weight=token_embd.weight
+model.layers.{}.self_attn.q_proj.weight=blk.{}.attn_q.weight
+model.layers.{}.self_attn.k_proj.weight=blk.{}.attn_k.weight
+model.layers.{}.self_attn.v_proj.weight=blk.{}.attn_v.weight
+model.layers.{}.self_attn.o_proj.weight=blk.{}.attn_output.weight
+model.layers.{}.self_attn.q_norm.weight=blk.{}.attn_q_norm.weight
+model.layers.{}.self_attn.k_norm.weight=blk.{}.attn_k_norm.weight
+model.layers.{}.post_attention_layernorm.weight=blk.{}.post_attention_norm.weight
+model.layers.{}.mlp.gate_proj.weight=blk.{}.ffn_gate.weight
+model.layers.{}.mlp.up_proj.weight=blk.{}.ffn_up.weight
+model.layers.{}.mlp.down_proj.weight=blk.{}.ffn_down.weight
+model.layers.{}.mlp.gate_up_exp.weight=blk.{}.ffn_gate_up_exp.weight
+model.layers.{}.mlp.gate_exp.weight=blk.{}.ffn_gate_exp.weight
+model.layers.{}.mlp.up_exp.weight=blk.{}.ffn_up_exp.weight
+model.layers.{}.mlp.down_exp.weight=blk.{}.ffn_down_exp.weight
+model.layers.{}.mlp.gate_shexp.weight=blk.{}.ffn_gate_shexp.weight
+model.layers.{}.mlp.down_shexp.weight=blk.{}.ffn_down_shexp.weight
+model.layers.{}.mlp.up_shexp.weight=blk.{}.ffn_up_shexp.weight
+model.layers.{}.ffn_norm.weight=blk.{}.ffn_norm.weight
+model.layers.{}.pre_feedforward_layernorm.weight=blk.{}.pre_ffw_norm.weight
+model.layers.{}.post_feedforward_layernorm.weight=blk.{}.post_ffw_norm.weight
+model.layers.{}.layer_output_scale.weight=blk.{}.layer_output_scale.weight
+model.norm.weight=output_norm.weight
+model.lm_head.weight=output.weight

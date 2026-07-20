@@ -1,0 +1,62 @@
+# ==============================================================================
+# Gemma 4 GGUF Tensor Mapping
+# Format: source_tensor_name=gguf_tensor_name
+# Placeholder: {} ou {bid} pour l'index de la couche (0, 1, 2...)
+# ==============================================================================
+# --- Embeddings & Global ---
+model.language_model.embed_tokens.weight=token_embd.weight
+model.language_model.norm.weight=output_norm.weight
+lm_head.weight=output.weight
+model.language_model.embed_tokens_per_layer.weight=per_layer_token_embd.weight
+model.language_model.per_layer_model_projection.weight=per_layer_model_proj.weight
+model.language_model.per_layer_projection_norm.weight=per_layer_proj_norm.weight
+# --- Layer Scalars & Norms ---
+# Scale global appliqué après chaque couche
+model.language_model.layers.{}.layer_scalar=blk.{}.layer_output_scale.weight
+# Normes d'attention (Gemma 4 utilise RMSNorm)
+model.language_model.layers.{}.pre_feedforward_layernorm.weight=blk.{}.ffn_norm.weight
+# Norme pré-attention (remplace input_layernorm)
+model.language_model.layers.{}.input_layernorm.weight=blk.{}.attn_norm.weight
+#model.language_model.layers.{}.input_layernorm.weight=blk.{}.ffn_norm.weight
+model.language_model.layers.{}.self_attn.q_norm.weight=blk.{}.attn_q_norm.weight
+model.language_model.layers.{}.self_attn.k_norm.weight=blk.{}.attn_k_norm.weight
+model.language_model.layers.{}.post_attention_layernorm.weight=blk.{}.post_attention_norm.weight
+# Normes FFN / MLP
+model.language_model.layers.{}.post_feedforward_layernorm.weight=blk.{}.post_ffw_norm.weight
+# Normes spécifiques MoE (utilisées dans les couches experts)
+model.language_model.layers.{}.pre_feedforward_layernorm_2.weight=blk.{}.pre_ffw_norm_2.weight
+model.language_model.layers.{}.post_feedforward_layernorm_1.weight=blk.{}.post_ffw_norm_1.weight
+model.language_model.layers.{}.post_feedforward_layernorm_2.weight=blk.{}.post_ffw_norm_2.weight
+# --- Attention Projections ---
+model.language_model.layers.{}.self_attn.q_proj.weight=blk.{}.attn_q.weight
+model.language_model.layers.{}.self_attn.k_proj.weight=blk.{}.attn_k.weight
+model.language_model.layers.{}.self_attn.v_proj.weight=blk.{}.attn_v.weight
+model.language_model.layers.{}.self_attn.o_proj.weight=blk.{}.attn_output.weight
+# --- MLP / FFN (Dense) ---
+model.language_model.layers.{}.mlp.gate_proj.weight=blk.{}.ffn_gate.weight
+model.language_model.layers.{}.mlp.up_proj.weight=blk.{}.ffn_up.weight
+model.language_model.layers.{}.mlp.down_proj.weight=blk.{}.ffn_down.weight
+# --- MoE Router & Scales ---
+model.language_model.layers.{}.mlp.router.weight=blk.{}.ffn_gate_inp.weight
+model.language_model.layers.{}.mlp.router.scale.weight=blk.{}.ffn_gate_inp.scale.weight
+# --- MoE Experts FFN ---
+# Si les poids experts sont fusionnés (gate_up_exps), ce mapping s'applique.
+# Sinon, les versions séparées sont également supportées :
+model.language_model.layers.{}.mlp.experts.gate_up_proj.weight=blk.{}.ffn_gate_up_exps.weight
+model.language_model.layers.{}.mlp.experts.gate_proj.weight=blk.{}.ffn_gate_exps.weight
+model.language_model.layers.{}.mlp.experts.up_proj.weight=blk.{}.ffn_up_exps.weight
+model.language_model.layers.{}.mlp.experts.down_proj.weight=blk.{}.ffn_down_exps.weight
+# --- Per-layer Embeddings & Projections ---
+# Mécanisme d'embeddings par couche (Gemma 4 specific)
+model.language_model.layers.{}.per_layer_input_gate.weight=blk.{}.inp_gate.weight
+model.language_model.layers.{}.per_layer_projection.weight=blk.{}.proj.weight
+model.language_model.layers.{}.post_per_layer_input_norm.weight=blk.{}.post_norm.weight
+# --- Rotary Embeddings (SWA vs Full Attention) ---
+# Stockés globalement ou par couche selon le checkpoint. GGUF les regroupe sous rope_freqs.
+model.language_model.layers.{}.self_attn.rotary_emb.inv_freq=rope_freqs.weight
+
+
+
+
+
+
