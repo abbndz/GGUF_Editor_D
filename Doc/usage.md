@@ -50,5 +50,7 @@ Access *Settings* to:
 - Difference amplification (to see minimal deviations).
 
 ---
+[ 🏠 Home ](index.md)  [⚙️ Features ](features.md)  [📘 User Guide](usage.md)  [🔧 Technical ](technical.md) [ ❤️ Support ](donate.md) 
+---
 
 © 2026 GGUF Editor D++ By ABBN.
