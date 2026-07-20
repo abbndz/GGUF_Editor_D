@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>技术架构 - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">首页</a></li>
+            <li class="nav-item"><a href="features.html">功能</a></li>
+            <li class="nav-item"><a href="usage.html">使用指南</a></li>
+            <li class="nav-item"><a href="technical.html" class="active">技术架构</a></li>
+            <li class="nav-item"><a href="donate.html">支持</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>技术架构</h1>
+            <p>面向开发者和贡献者的文档。</p>
+
+            <h2>使用的技术</h2>
+            <ul>
+                <li><strong>语言：</strong> Delphi 10/11/12 (Object Pascal)。</li>
+                <li><strong>GUI：</strong> VCL (Visual Component Library)。</li>
+                <li><strong>图形：</strong> TeeChart（用于复杂图表）。</li>
+                <li><strong>FFI：</strong> 动态加载 C/C++ DLL (ggml-base.dll)。</li>
+            </ul>
+
+            <h2>模块结构</h2>
+            <table>
+                <tr>
+                    <th>单元文件</th>
+                    <th>作用</th>
+                </tr>
+                <tr>
+                    <td><code>uGGUFModel.pas</code></td>
+                    <td>数据类定义 (Tensors, KVs)。</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFReader.pas</code></td>
+                    <td>GGUF 文件的二进制读取。</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFWriter.pas</code></td>
+                    <td>输出流的写入和操纵。</td>
+                </tr>
+                <tr>
+                    <td><code>uGgmlQuants.pas</code></td>
+                    <td>量化函数的接口 (DLL 或 Impl)。</td>
+                </tr>
+                <tr>
+                    <td><code>uViewTensors.pas</code></td>
+                    <td>可视化逻辑、异常检测和图表。</td>
+                </tr>
+                <tr>
+                    <td><code>uTensorTranspose.pas</code></td>
+                    <td>矩阵转置逻辑 (用于 Safetensors)。</td>
+                </tr>
+            </table>
+
+            <h2>映射格式</h2>
+            <p>映射文件是包含 <code>pattern=replacement</code> 规则的文本文件 (.txt)。</p>
+            <pre><code>
+model.layers.0.input_layernorm.weight -> attention.input_layernorm
+model.layers.{}.feed_forward.w1.weight -> mlp.gate
+            </code></pre>
+
+            <h2>内存管理</h2>
+            <p>应用程序对张量数据使用“延迟加载” (Lazy Load) 方法。原始数据仅在显示图表或进行量化时才解码到内存 (F32) 中，以尽量减少大型模型的内存占用。</p>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

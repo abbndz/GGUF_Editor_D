@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Руководство пользователя - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Главная</a></li>
+            <li class="nav-item"><a href="features.html">Возможности</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">Руководство</a></li>
+            <li class="nav-item"><a href="technical.html">Технически</a></li>
+            <li class="nav-item"><a href="donate.html">Поддержка</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Краткое руководство по использованию</h1>
+
+            <h2>1. Рабочий процесс объединения (Merge)</h2>
+            <p>Это руководство объясняет, как объединить базовую модель (A) с весами (B) для создания новой модели.</p>
+            
+            <img src="../img/workflow_diagram.png" alt="Диаграмма рабочего процесса" class="screenshot">
+
+            <ol>
+                <li><strong>Загрузка:</strong>
+                    <ul>
+                        <li>Выберите и загрузите <em>Модель A</em> (ваша база).</li>
+                        <li>Выберите и загрузите <em>Модель B</em> (ваши специфические веса).</li>
+                    </ul>
+                </li>
+                <li><strong>Выбор:</strong>
+                    <ul>
+                        <li>На вкладке "Модель B" отметьте тензоры для передачи или используйте "Перенести все" (Transfer All).</li>
+                        <li>Используйте фильтры по слоям (например, `16..32` или `Mod 2` для нечетных слоев).</li>
+                    </ul>
+                </li>
+                <li><strong>Проверка (Опционально):</strong>
+                    <ul>
+                        <li>Откройте "View Tensors".</li>
+                        <li>Загрузите A и B. Используйте вкладку "Diff (T1-T2)" для проверки разницы значений.</li>
+                    </ul>
+                </li>
+                <li><strong>Результат:</strong>
+                    <ul>
+                        <li>Вкладка "Model Out" теперь содержит объединенный список.</li>
+                        <li>Установите путь сохранения в поле "Output".</li>
+                        <li>Нажмите <strong>Save</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. Использование визуализации</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="Вид визуализации" class="screenshot" style="max-width: 80%;">
+                <p><em>Пример визуализации с обнаружением блоков и выбросов.</em></p>
+            </div>
+            <h3>Навигация</h3>
+            <ul>
+                <li><strong>Слайдер внизу:</strong> Прокручивает вид по горизонтали.</li>
+                <li><strong>Колесо мыши:</strong> Масштабирование вперед/назад.</li>
+                <li><strong>Клик и перетаскивание:</strong> Перемещение окна просмотра (Pan).</li>
+                <li><strong>Клавиатура:</strong> Используйте `+`/`-` для масштаба, `<`/`>` для прокрутки.</li>
+            </ul>
+            
+            <h3>Экспорт</h3>
+            <p>Вы можете экспортировать данные, отображенные в гистограмме или временных рядах, через контекстное меню или кнопки экспорта (формат CSV/TXT).</p>
+
+            <h2>3. Конфигурация</h2>
+            <p>Доступ к <em>Настройкам</em> для:</p>
+            <ul>
+                <li>Включения/отключения использования внешних DLL (быстрее).</li>
+                <li>Настроек размера фрагментации по умолчанию.</li>
+                <li>Усиления разницы (для просмотра минимальных отклонений).</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

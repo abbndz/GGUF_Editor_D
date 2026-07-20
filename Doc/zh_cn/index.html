@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>首页 - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <!-- Horizontal Navigation Bar -->
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html" class="active">首页</a></li>
+            <li class="nav-item"><a href="features.html">功能</a></li>
+            <li class="nav-item"><a href="usage.html">使用指南</a></li>
+            <li class="nav-item"><a href="technical.html">技术架构</a></li>
+            <li class="nav-item"><a href="donate.html">支持</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>欢迎使用 GGUF Editor D++</h1>
+            <p>GGUF Editor D++ 是一款用于处理、分析和优化 <strong>GGUF</strong> 和 <strong>Safetensors</strong> 格式的 Language Model (LLM) 文件的尖端工具。它由 Delphi 开发，为研究人员和开发者提供高性能的界面。</p>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <img src="../img/screenshot_main.png" alt="主界面" class="screenshot" style="max-width: 80%; margin: 0 auto;">
+                <p><em>主界面：张量可视化与模型管理。</em></p>
+            </div>
+
+            <h2>为什么选择 GGUF Editor D++？</h2>
+            <ul>
+                <li><strong>多源支持：</strong> 合并 GGUF 模型与 PyTorch Safetensors 权重。</li>
+                <li><strong>实时可视化：</strong> 通过交互式图表分析张量分布和数值。</li>
+                <li><strong>高性能：</strong> 优化使用 DLL (Llama.cpp) 进行量化/反量化处理。</li>
+                <li><strong>高级编辑：</strong> 通过映射修改元数据 (KVs) 和张量名称。</li>
+            </ul>
+
+            <h3>兼容性</h3>
+            <p>该工具支持广泛的量化类型：Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q8_1, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, Q8_K, IQ4_NL, MXFP4, NVFP4 等。</p>
+        </div>
+
+        <footer class="footer">
+            &copy; 2026 GGUF Editor D++ By ABBN. 技术文档。
+        </footer>
+    </div>
+
+</body>
+</html>

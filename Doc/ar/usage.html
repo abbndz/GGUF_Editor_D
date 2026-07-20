@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل المستخدم - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">الرئيسية</a></li>
+            <li class="nav-item"><a href="features.html">الميزات</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">دليل المستخدم</a></li>
+            <li class="nav-item"><a href="technical.html">فني</a></li>
+            <li class="nav-item"><a href="donate.html">الدعم</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>دليل الاستخدام السريع</h1>
+
+            <h2>1. سير عمل الدمج (Merge)</h2>
+            <p>يشرح هذا الدليل كيفية دمج نموذج أساسي (A) مع أوزان (B) لإنشاء نموذج جديد.</p>
+            
+            <img src="../img/workflow_diagram.png" alt="مخطط سير العمل" class="screenshot">
+
+            <ol>
+                <li><strong>التحميل:</strong>
+                    <ul>
+                        <li>تصفح واحمل <em>النموذج A</em> (القاعدة الخاصة بك).</li>
+                        <li>تصفح واحمل <em>النموذج B</em> (الأوزان الخاصة بك).</li>
+                    </ul>
+                </li>
+                <li><strong>الاختيار:</strong>
+                    <ul>
+                        <li>في علامة تبويب "النموذج B"، حدد البيانات المراد نقلها أو استخدم "نقل الكل".</li>
+                        <li>استخدم فلاتر الطبقات (مثلاً: `16..32` أو `Mod 2` للطبقات الفردية).</li>
+                    </ul>
+                </li>
+                <li><strong>التحقق (اختياري):</strong>
+                    <ul>
+                        <li>افتح "عرض البيانات".</li>
+                        <li>حمل A و B. استخدم علامة تبويب "الفرق (T1-T2)" للتحقق من اختلافات القيم.</li>
+                    </ul>
+                </li>
+                <li><strong>الإخراج:</strong>
+                    <ul>
+                        <li>تحتوي علامة تبويب "النموذج المخرج" الآن على القائمة المدمجة.</li>
+                        <li>حدد مسار الإخراج في حقل "الإخراج".</li>
+                        <li>انقر على <strong>حفظ</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. استخدام التصور</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="عرض التصور" class="screenshot" style="max-width: 80%;">
+                <p><em>مثال على التصور مع اكتشاف الكتل والقيم المتطرفة.</em></p>
+            </div>
+            <h3>التنقل</h3>
+            <ul>
+                <li><strong>شريط التمرير السفلي:</strong> يمرر العرض أفقياً.</li>
+                <li><strong>عجلة الماوس:</strong> تكبير/تصغير.</li>
+                <li><strong>النقر والسحب:</strong> تحريك نافذة العرض (Pan).</li>
+                <li><strong>لوحة المفاتيح:</strong> استخدم `+`/`-` للتكبير، `<`/`>` للتمرير.</li>
+            </ul>
+            
+            <h3>التصدير</h3>
+            <p>يمكنك تصدير البيانات المعروضة في المخطط التكراري أو السلاسل الزمنية عبر القائمة السياقية أو أزرار التصدير (تنسيق CSV/TXT).</p>
+
+            <h2>3. التكوين</h2>
+            <p>ادخل إلى <em>الإعدادات</em> لـ:</p>
+            <ul>
+                <li>تفعيل/تعطيل استخدام DLLs الخارجية (أسرع).</li>
+                <li>إعدادات حجم التقسيم الافتراضي.</li>
+                <li>تكبير الفروقات (لرؤية الانحرافات الدنيا).</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ بواسطة ABBN.</footer>
+    </div>
+</body>
+</html>

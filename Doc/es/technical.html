@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitectura Técnica - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Inicio</a></li>
+            <li class="nav-item"><a href="features.html">Características</a></li>
+            <li class="nav-item"><a href="usage.html">Guía de Usuario</a></li>
+            <li class="nav-item"><a href="technical.html" class="active">Técnico</a></li>
+            <li class="nav-item"><a href="donate.html">Apoyar</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Arquitectura Técnica</h1>
+            <p>Documentación dirigida a desarrolladores y contribuyentes.</p>
+
+            <h2>Tecnologías Utilizadas</h2>
+            <ul>
+                <li><strong>Lenguaje:</strong> Delphi 10/11/12 (Object Pascal).</li>
+                <li><strong>GUI:</strong> VCL (Visual Component Library).</li>
+                <li><strong>Gráficos:</strong> TeeChart (para gráficos complejos).</li>
+                <li><strong>FFI:</strong> Carga dinámica de DLLs C/C++ (ggml-base.dll).</li>
+            </ul>
+
+            <h2>Estructura de Módulos</h2>
+            <table>
+                <tr>
+                    <th>Archivo Unit</th>
+                    <th>Rol</th>
+                </tr>
+                <tr>
+                    <td><code>uGGUFModel.pas</code></td>
+                    <td>Definición de clases de datos (Tensors, KVs).</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFReader.pas</code></td>
+                    <td>Lectura binaria de archivos GGUF.</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFWriter.pas</code></td>
+                    <td>Escritura y manipulación de flujos de salida.</td>
+                </tr>
+                <tr>
+                    <td><code>uGgmlQuants.pas</code></td>
+                    <td>Interfaz con funciones de cuantización (DLL o Impl).</td>
+                </tr>
+                <tr>
+                    <td><code>uViewTensors.pas</code></td>
+                    <td>Lógica de visualización, detección de anomalías y gráficos.</td>
+                </tr>
+                <tr>
+                    <td><code>uTensorTranspose.pas</code></td>
+                    <td>Lógica de transposición de matrices (para Safetensors).</td>
+                </tr>
+            </table>
+
+            <h2>Formato de Mapeo</h2>
+            <p>Los archivos de mapeo son archivos de texto (.txt) que contienen reglas <code>pattern=replacement</code>.</p>
+            <pre><code>
+model.layers.0.input_layernorm.weight -> attention.input_layernorm
+model.layers.{}.feed_forward.w1.weight -> mlp.gate
+            </code></pre>
+
+            <h2>Gestión de Memoria</h2>
+            <p>La aplicación utiliza un enfoque de "Lazy Load" (carga diferida) para los datos de los tensores. Los datos sin procesar no se decodifican en memoria (F32) hasta el momento de la visualización en gráficos o la cuantización, con el fin de minimizar el consumo de RAM en modelos muy grandes.</p>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGUF Editor D++ - Documentation Home</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --text-color: #333333;
+            --white: #ffffff;
+            --border-color: #e1e4e8;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: #bdc3c7;
+            margin-top: 5px;
+        }
+
+        .main-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        .intro-section {
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .intro-section h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .lang-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .lang-card {
+            background-color: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lang-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-color: var(--accent-color);
+        }
+
+        .lang-flag {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .lang-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        .lang-native {
+            font-size: 0.9rem;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+            color: #777;
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--white);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>GGUF Editor D++ Documentation</h1>
+        <div class="subtitle">Select your language / Choisissez votre langue</div>
+    </header>
+
+    <div class="main-container">
+        
+        <div class="intro-section">
+            <h2>About GGUF Editor D++</h2>
+            <p>
+                GGUF Editor D++ is a powerful desktop tool designed for the manipulation, analysis, and optimization of Large Language Model (LLM) files in <strong>GGUF</strong> and <strong>Safetensors</strong> formats.
+            </p>
+            <p>
+                Developed in <strong>Delphi</strong> for high performance, this editor allows researchers and developers to merge models, visualize tensor distributions, analyze quantization effects in real-time, and manage metadata with precision. Whether you are fine-tuning a model or converting weights, GGUF Editor D++ provides the visual feedback and control you need.
+            </p>
+            <p>
+                <strong>Key Features:</strong> Real-time tensor visualization, intelligent quantization via Llama.cpp DLLs, model merging (A+B), and advanced name mapping.
+            </p>
+        </div>
+
+        <h3 style="text-align: center; color: var(--primary-color); margin-bottom: 20px;">Select Language / Choisir la langue</h3>
+        
+        <div class="lang-grid">
+            <!-- English -->
+            <a href="en/index.html" class="lang-card">
+                <div class="lang-flag">🇬🇧</div>
+                <div class="lang-name">English</div>
+                <div class="lang-native">English</div>
+            </a>
+
+            <!-- French -->
+            <a href="fr/index.html" class="lang-card">
+                <div class="lang-flag">🇫🇷</div>
+                <div class="lang-name">French</div>
+                <div class="lang-native">Français</div>
+            </a>
+
+            <!-- Arabic -->
+            <a href="ar/index.html" class="lang-card">
+                <div class="lang-flag">🇸🇦</div>
+                <div class="lang-name">Arabic</div>
+                <div class="lang-native">العربية</div>
+            </a>
+
+            <!-- Chinese (Simplified) -->
+            <a href="zh/index.html" class="lang-card">
+                <div class="lang-flag">🇨🇳</div>
+                <div class="lang-name">Chinese</div>
+                <div class="lang-native">中文 (简体)</div>
+            </a>
+
+            <!-- Italian -->
+            <a href="it/index.html" class="lang-card">
+                <div class="lang-flag">🇮🇹</div>
+                <div class="lang-name">Italian</div>
+                <div class="lang-native">Italiano</div>
+            </a>
+
+            <!-- German -->
+            <a href="de/index.html" class="lang-card">
+                <div class="lang-flag">🇩🇪</div>
+                <div class="lang-name">German</div>
+                <div class="lang-native">Deutsch</div>
+            </a>
+
+            <!-- Russian -->
+            <a href="ru/index.html" class="lang-card">
+                <div class="lang-flag">🇷🇺</div>
+                <div class="lang-name">Russian</div>
+                <div class="lang-native">Русский</div>
+            </a>
+
+            <!-- Spanish -->
+            <a href="es/index.html" class="lang-card">
+                <div class="lang-flag">🇪🇸</div>
+                <div class="lang-name">Spanish</div>
+                <div class="lang-native">Español</div>
+            </a>
+
+            <!-- Japanese -->
+            <a href="ja/index.html" class="lang-card">
+                <div class="lang-flag">🇯🇵</div>
+                <div class="lang-name">Japanese</div>
+                <div class="lang-native">日本語</div>
+            </a>
+
+            <!-- Korean -->
+            <a href="ko/index.html" class="lang-card">
+                <div class="lang-flag">🇰🇷</div>
+                <div class="lang-name">Korean</div>
+                <div class="lang-native">한국어</div>
+            </a>
+        </div>
+
+    </div>
+
+    <footer>
+        &copy; 2026 GGUF Editor D++ By ABBN. All rights reserved.
+    </footer>
+
+</body>
+</html>

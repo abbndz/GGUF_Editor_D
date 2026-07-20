@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الميزات - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">الرئيسية</a></li>
+            <li class="nav-item"><a href="features.html" class="active">الميزات</a></li>
+            <li class="nav-item"><a href="usage.html">دليل المستخدم</a></li>
+            <li class="nav-item"><a href="technical.html">فني</a></li>
+            <li class="nav-item"><a href="donate.html">الدعم</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>الميزات التفصيلية</h1>
+
+            <h2>1. تحرير ودمج النماذج</h2>
+            <p>تتيح الأداة تحميل ما يصل إلى ثلاثة مصادر نماذج في وقت واحد:</p>
+            <ul>
+                <li><strong>النموذج A (GGUF):</strong> النموذج الأساسي.</li>
+                <li><strong>النموذج B (GGUF):</strong> النموذج الثاني للدمج.</li>
+                <li><strong>النموذج S (Safetensors):</strong> دمج أوزان PyTorch.</li>
+            </ul>
+            <p>يمكنك نقل بيانات محددة أو حسب الطبقة (جميع "blks"، أو الطبقات الفردية/الزوجية) إلى نموذج الإخراج.</p>
+
+            <h2>2. التصور والتحليل</h2>
+            <p>ادخل إلى عرض "البيانات" (Tensors) لفحص محتويات نماذجك.</p>
+            <ul>
+                <li><strong>الرسوم البيانية الزمنية (سلاسل):</strong> تصور القيم العشرية (float) على طول البيانات. اكتشف الشذوذ والقيم المتطرفة.</li>
+                <li><strong>المقارنة (T1 - T2):</strong> اطرح بياناتين لرؤية الفرق (مفيد لتحليل الدمج).</li>
+                <li><strong>المخططات التكرارية (Histograms):</strong> حلل توزيع الأوزان (عادي، غاوسي، إلخ).</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="عرض التصور" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. خريطة الأسماء (Mapping)</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="عرض الخرائط" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>محرك الخرائط يسمح بإعادة تسمية البيانات تلقائياً لتكييف نموذج مع بنية مستهدفة.</p>
+            <ul>
+                <li>دعم الأنماط العامة (مثل: `blk.{}.attn.weight`).</li>
+                <li>ملفات تكوين خارجية (.txt).</li>
+                <li>إدارة الصفحات المتقدمة (Prefixes) المهملة.</li>
+            </ul>
+
+            <h2>4. التكميم الذكي</h2>
+            <p>تحويل أنواع البيانات في الوقت الفعلي:</p>
+            <ul>
+                <li><strong>مكتبة Llama.cpp DLL:</strong> استخدام المكتبات الأصلية لإلغاء التكميم عالي الدقة (تقليل RMSE).</li>
+                <li><strong>وضع التنفيذ (Impl):</strong> خوارزمية برمجية بديلة للاستقرار الأقصى أو عندما لا تتوفر DLL.</li>
+                <li>محاكاة التكميم: رؤية كيف ستبدو البيانات FP32 بعد تحويلها إلى Q4_K دون كتابتها فعلياً.</li>
+            </ul>
+
+            <h2>5. التقسيم والدمج (Split and Merge)</h2>
+            <p>أدوات مدمجة لـ:</p>
+            <ul>
+                <li><strong>التقسيم (Split):</strong> تقسيم نموذج GGUF كبير إلى ملفات متعددة (مثلاً 4 جيجابايت).</li>
+                <li><strong>الدمج (Merge):</strong> إعادة تجميع شرائح GGUF متعددة في ملف واحد متماسك.</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ بواسطة ABBN.</footer>
+    </div>
+</body>
+</html>

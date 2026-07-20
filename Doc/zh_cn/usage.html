@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用指南 - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">首页</a></li>
+            <li class="nav-item"><a href="features.html">功能</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">使用指南</a></li>
+            <li class="nav-item"><a href="technical.html">技术架构</a></li>
+            <li class="nav-item"><a href="donate.html">支持</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>快速使用指南</h1>
+
+            <h2>1. 合并工作流 (Merge)</h2>
+            <p>本指南解释如何将基础模型 (A) 与权重 (B) 合并以创建新模型。</p>
+            
+            <img src="../img/workflow_diagram.png" alt="工作流图" class="screenshot">
+
+            <ol>
+                <li><strong>加载：</strong>
+                    <ul>
+                        <li>浏览并加载 <em>模型 A</em>（您的基础模型）。</li>
+                        <li>浏览并加载 <em>模型 B</em>（您的特定权重）。</li>
+                    </ul>
+                </li>
+                <li><strong>选择：</strong>
+                    <ul>
+                        <li>在“模型 B”选项卡中，勾选要传输的张量或使用“全部传输”。</li>
+                        <li>使用层过滤器（例如：`16..32` 或 `Mod 2` 表示奇数层）。</li>
+                    </ul>
+                </li>
+                <li><strong>验证（可选）：</strong>
+                    <ul>
+                        <li>打开“View Tensors”。</li>
+                        <li>加载 A 和 B。使用“Diff (T1-T2)”选项卡验证数值差异。</li>
+                    </ul>
+                </li>
+                <li><strong>输出：</strong>
+                    <ul>
+                        <li>“Model Out”选项卡现在包含合并后的列表。</li>
+                        <li>在“Output”字段中设置输出路径。</li>
+                        <li>点击 <strong>Save</strong>。</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. 使用可视化</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="可视化视图" class="screenshot" style="max-width: 80%;">
+                <p><em>示例可视化，包含块检测和离群点。</em></p>
+            </div>
+            <h3>导航</h3>
+            <ul>
+                <li><strong>底部滑块：</strong> 水平滚动视图。</li>
+                <li><strong>鼠标滚轮：</strong> 缩放。</li>
+                <li><strong>点击拖拽：</strong> 平移视图窗口 (Pan)。</li>
+                <li><strong>键盘：</strong> 使用 `+`/`-` 缩放，`<`/`>` 滚动。</li>
+            </ul>
+            
+            <h3>导出</h3>
+            <p>您可以通过上下文菜单或导出按钮导出直方图或时间序列中显示的数据（CSV/TXT 格式）。</p>
+
+            <h2>3. 配置</h2>
+            <p>访问 <em>Settings</em> 以：</p>
+            <ul>
+                <li>启用/禁用外部 DLL 的使用（速度更快）。</li>
+                <li>默认分割大小设置。</li>
+                <li>差异放大（以查看最小偏差）。</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

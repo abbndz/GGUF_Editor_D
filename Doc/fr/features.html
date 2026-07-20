@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fonctionnalités - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Accueil</a></li>
+            <li class="nav-item"><a href="features.html" class="active">Fonctionnalités</a></li>
+            <li class="nav-item"><a href="usage.html">Guide d'utilisation</a></li>
+            <li class="nav-item"><a href="technical.html">Technical</a></li>
+            <li class="nav-item"><a href="donate.html">Soutenir</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Fonctionnalités Détaillées</h1>
+
+            <h2>1. Édition et Fusion de Modèles</h2>
+            <p>L'outil permet de charger jusqu'à trois sources de modèles simultanément :</p>
+            <ul>
+                <li><strong>Modèle A (GGUF) :</strong> Modèle de base.</li>
+                <li><strong>Modèle B (GGUF) :</strong> Deuxième modèle pour fusion (merging).</li>
+                <li><strong>Modèle S (Safetensors) :</strong> Intégration de poids PyTorch.</li>
+            </ul>
+            <p>Vous pouvez transférer des tenseurs spécifiques ou par couches (tous les "blks", ou couches impaires/paires) vers le modèle de sortie.</p>
+
+            <h2>2. Visualisation et Analyse</h2>
+            <p>Accédez à la vue "Tensors" pour inspecter l'intérieur de vos modèles.</p>
+            <ul>
+                <li><strong>Graphiques Temporels (Séries) :</strong> Visualisez les valeurs de float le long d'un tenseur. Détectez les anomalies et les outliers.</li>
+                <li><strong>Comparaison (T1 - T2) :</strong> Soustrayez deux tenseurs pour voir la différence (utile pour l'analyse de fusion).</li>
+                <li><strong>Histogrammes :</strong> Analysez la distribution des poids (normal, gaussien, etc.).</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="Vue Visualisation" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. Mapping de Noms</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="Vue Mapping" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>Le moteur de mapping permet de renommer automatiquement les tenseurs pour adapter un modèle à une architecture cible.</p>
+            <ul>
+                <li>Support de patterns génériques (ex: `blk.{}.attn.weight`).</li>
+                <li>Fichiers de configuration externes (.txt).</li>
+                <li>Gestion des préfixes ignorés.</li>
+            </ul>
+
+            <h2>4. Quantification Intelligente</h2>
+            <p>Conversion de types de tenseurs en temps réel :</p>
+            <ul>
+                <li><strong>DLL Llama.cpp :</strong> Utilisation des bibliothèques natives pour une déquantisation de haute fidélité (RMSE minimisé).</li>
+                <li><strong>Mode Impl :</strong> Algorithme logiciel alternatif pour une stabilité maximale ou quand la DLL n'est pas disponible.</li>
+                <li>Simulation de quantification : Voir à quoi ressemblerait un tenseur FP32 converti en Q4_K sans l'écrire.</li>
+            </ul>
+
+            <h2>5. Split et Merge</h2>
+            <p>Outils intégrés pour :</p>
+            <ul>
+                <li><strong>Split :</strong> Découper un gros modèle GGUF en plusieurs fichiers (ex: 4GB).</li>
+                <li><strong>Merge :</strong> Recombiner plusieurs shards GGUF en un seul fichier cohérent.</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

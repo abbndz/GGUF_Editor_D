@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機能 - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">ホーム</a></li>
+            <li class="nav-item"><a href="features.html" class="active">機能</a></li>
+            <li class="nav-item"><a href="usage.html">ユーザーガイド</a></li>
+            <li class="nav-item"><a href="technical.html">技術情報</a></li>
+            <li class="nav-item"><a href="donate.html">寄付</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>詳細な機能</h1>
+
+            <h2>1. モデルの編集とマージ</h2>
+            <p>本ツールは、最大3つのモデルソースを同時に読み込むことができます：</p>
+            <ul>
+                <li><strong>モデル A (GGUF)：</strong> ベースモデル。</li>
+                <li><strong>モデル B (GGUF)：</strong> マージ用の2番目のモデル。</li>
+                <li><strong>モデル S (Safetensors)：</strong> PyTorch 重みの統合。</li>
+            </ul>
+            <p>特定のテンソルや層（すべての "blks"、または奇数/偶数層）を出力モデルに転送することができます。</p>
+
+            <h2>2. 可視化と分析</h2>
+            <p>「テンソル」ビューにアクセスして、モデル内部を検索します。</p>
+            <ul>
+                <li><strong>時系列プロット：</strong> テンソル沿いの float 値を視覚化します。異常や外れ値を検出します。</li>
+                <li><strong>比較（T1 - T2）：</strong> 2つのテンソルを減算して差分を確認します（マージ分析に有用）。</li>
+                <li><strong>ヒストグラム：</strong> 重みの分布（正規分布、ガウス分布など）を分析します。</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="可視化ビュー" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. 名前マッピング</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="マッピングビュー" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>マッピングエンジンにより、ターゲットアーキテクチャに合わせてテンソルを自動的にリネームできます。</p>
+            <ul>
+                <li>一般的なパターン（例：`blk.{}.attn.weight`）のサポート。</li>
+                <li>外部構成ファイル（.txt）のサポート。</li>
+                <li>無視するプレフィックスの管理。</li>
+            </ul>
+
+            <h2>4. インテリジェント量子化</h2>
+            <p>テンソルタイプのリアルタイム変換：</p>
+            <ul>
+                <li><strong>Llama.cpp DLL：</strong> 高忠実度の復量子化のためにネイティブライブラリを使用（RMSE を最小化）。</li>
+                <li><strong>Impl モード：</strong> DLL が利用できない場合や最大限の安定性が必要な場合の代替ソフトウェアアルゴリズム。</li>
+                <li>量子化シミュレーション：実際に書き込む前に、FP32 テンソルが Q4_K に変換された場合にどうなるかを確認。</li>
+            </ul>
+
+            <h2>5. スプリットとマージ</h2>
+            <p>統合されたツール：</p>
+            <ul>
+                <li><strong>スプリット：</strong> 大きな GGUF モデルを複数のファイルに分割（例：4GB ごと）。</li>
+                <li><strong>マージ：</strong> 複数の GGUF シャードを1つの整合性のあるファイルに再結合。</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

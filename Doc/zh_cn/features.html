@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能 - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">首页</a></li>
+            <li class="nav-item"><a href="features.html" class="active">功能</a></li>
+            <li class="nav-item"><a href="usage.html">使用指南</a></li>
+            <li class="nav-item"><a href="technical.html">技术架构</a></li>
+            <li class="nav-item"><a href="donate.html">支持</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>详细功能</h1>
+
+            <h2>1. 模型编辑与合并</h2>
+            <p>该工具允许同时加载多达三个模型源：</p>
+            <ul>
+                <li><strong>模型 A (GGUF)：</strong> 基础模型。</li>
+                <li><strong>模型 B (GGUF)：</strong> 用于合并的第二个模型。</li>
+                <li><strong>模型 S (Safetensors)：</strong> 集成 PyTorch 权重。</li>
+            </ul>
+            <p>您可以将特定的张量或按层（所有 "blks"，或奇/偶层）传输到输出模型。</p>
+
+            <h2>2. 可视化与分析</h2>
+            <p>访问“Tensors”视图以检查模型的内部结构。</p>
+            <ul>
+                <li><strong>时间序列（图表）：</strong> 可视化沿张量的 float 值。检测异常值和离群点。</li>
+                <li><strong>比较 (T1 - T2)：</strong> 减去两个张量以查看差异（对融合分析很有用）。</li>
+                <li><strong>直方图：</strong> 分析权重分布（正态、高斯等）。</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="可视化视图" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. 名称映射 (Mapping)</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="映射视图" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>映射引擎允许自动重命名张量，以适应目标架构。</p>
+            <ul>
+                <li>支持通用模式（例如：`blk.{}.attn.weight`）。</li>
+                <li>外部配置文件 (.txt)。</li>
+                <li>管理被忽略的前缀。</li>
+            </ul>
+
+            <h2>4. 智能量化</h2>
+            <p>实时转换张量类型：</p>
+            <ul>
+                <li><strong>Llama.cpp DLL：</strong> 使用原生库进行高保真反量化（最小化 RMSE）。</li>
+                <li><strong>Impl 模式：</strong> 备用软件算法，用于最大稳定性或在 DLL 不可用时使用。</li>
+                <li>量化模拟：在不写入文件的情况下，查看 FP32 张量转换为 Q4_K 的样子。</li>
+            </ul>
+
+            <h2>5. 分割与合并 (Split and Merge)</h2>
+            <p>集成工具用于：</p>
+            <ul>
+                <li><strong>分割 (Split)：</strong> 将大型 GGUF 模型拆分为多个文件（例如 4GB）。</li>
+                <li><strong>合并 (Merge)：</strong> 将多个 GGUF 碎片重新组合成一个一致的单个文件。</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

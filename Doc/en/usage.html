@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Home</a></li>
+            <li class="nav-item"><a href="features.html">Features</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">User Guide</a></li>
+            <li class="nav-item"><a href="technical.html">Technical</a></li>
+            <li class="nav-item"><a href="donate.html">Support</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Quick Usage Guide</h1>
+
+            <h2>1. Merge Workflow</h2>
+            <p>This guide explains how to merge a base model (A) with weights (B) to create a new model.</p>
+            
+            <img src="../img/workflow_diagram.png" alt="Workflow Diagram" class="screenshot">
+
+            <ol>
+                <li><strong>Loading:</strong>
+                    <ul>
+                        <li>Browse & Load <em>Model A</em> (Your base).</li>
+                        <li>Browse & Load <em>Model B</em> (Your specific weights).</li>
+                    </ul>
+                </li>
+                <li><strong>Selection:</strong>
+                    <ul>
+                        <li>In the "Model B" tab, check the tensors to transfer or use "Transfer All".</li>
+                        <li>Use layer filters (e.g., `16..32` or `Mod 2` for odd layers).</li>
+                    </ul>
+                </li>
+                <li><strong>Verification (Optional):</strong>
+                    <ul>
+                        <li>Open "View Tensors".</li>
+                        <li>Load A and B. Use the "Diff (T1-T2)" tab to verify value differences.</li>
+                    </ul>
+                </li>
+                <li><strong>Output:</strong>
+                    <ul>
+                        <li>The "Model Out" tab now contains the merged list.</li>
+                        <li>Set the output path in the "Output" field.</li>
+                        <li>Click <strong>Save</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. Using Visualization</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="Visualization View" class="screenshot" style="max-width: 80%;">
+                <p><em>Example visualization with block detection and outliers.</em></p>
+            </div>
+            <h3>Navigation</h3>
+            <ul>
+                <li><strong>Bottom Slider:</strong> Scrolls the view horizontally.</li>
+                <li><strong>Mouse Wheel:</strong> Zoom in/out.</li>
+                <li><strong>Click & Drag:</strong> Pan the view window.</li>
+                <li><strong>Keyboard:</strong> Use `+`/`-` to zoom, `<`/`>` to scroll.</li>
+            </ul>
+            
+            <h3>Export</h3>
+            <p>You can export the data displayed in the histogram or time series via the context menu or export buttons (CSV/TXT format).</p>
+
+            <h2>3. Configuration</h2>
+            <p>Access <em>Settings</em> to:</p>
+            <ul>
+                <li>Enable/Disable the use of external DLLs (faster).</li>
+                <li>Default split size settings.</li>
+                <li>Difference amplification (to see minimal deviations).</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

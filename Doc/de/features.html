@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funktionen - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Startseite</a></li>
+            <li class="nav-item"><a href="features.html" class="active">Funktionen</a></li>
+            <li class="nav-item"><a href="usage.html">Benutzerhandbuch</a></li>
+            <li class="nav-item"><a href="technical.html">Technisch</a></li>
+            <li class="nav-item"><a href="donate.html">Unterstützen</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Detaillierte Funktionen</h1>
+
+            <h2>1. Modellbearbeitung und Verschmelzung</h2>
+            <p>Das Tool ermöglicht das gleichzeitige Laden von bis zu drei Modellquellen:</p>
+            <ul>
+                <li><strong>Modell A (GGUF):</strong> Basismodell.</li>
+                <li><strong>Modell B (GGUF):</strong> Zweites Modell zum Verschmelzen (Merge).</li>
+                <li><strong>Modell S (Safetensors):</strong> Integration von PyTorch-Gewichten.</li>
+            </ul>
+            <p>Sie können spezifische Tensoren oder nach Ebenen (alle "blks", oder ungerade/gerade Schichten) in das Ausgangsmodell übertragen.</p>
+
+            <h2>2. Visualisierung und Analyse</h2>
+            <p>Greifen Sie auf die Ansicht "Tensoren" zu, um das Innere Ihrer Modelle zu untersuchen.</p>
+            <ul>
+                <li><strong>Zeitreihen (Plots):</strong> Visualisieren Sie Float-Werte entlang eines Tensors. Erkennen Sie Anomalien und Ausreißer.</li>
+                <li><strong>Vergleich (T1 - T2):</strong> Subtrahieren Sie zwei Tensoren, um den Unterschied zu sehen (nützlich für die Analyse von Merges).</li>
+                <li><strong>Histogramme:</strong> Analysieren Sie die Gewichtsverteilung (normal, gaußförmig, usw.).</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="Visualisierungsansicht" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. Namens-Mapping</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="Mapping-Ansicht" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>Die Mapping-Engine ermöglicht das automatische Umbenennen von Tensoren, um ein Modell an eine Zielarchitektur anzupassen.</p>
+            <ul>
+                <li>Unterstützung für generische Muster (z.B. `blk.{}.attn.weight`).</li>
+                <li>Externe Konfigurationsdateien (.txt).</li>
+                <li>Verwaltung von ignorierten Präfixen.</li>
+            </ul>
+
+            <h2>4. Intelligente Quantisierung</h2>
+            <p>Echtzeit-Konvertierung von Tensor-Typen:</p>
+            <ul>
+                <li><strong>Llama.cpp DLL:</strong> Nutzung nativer Bibliotheken für hochpräzise Dequantisierung (minimierter RMSE).</li>
+                <li><strong>Impl-Modus:</strong> Alternativem Software-Algorithmus für maximale Stabilität oder wenn die DLL nicht verfügbar ist.</li>
+                <li>Quantisierungssimulation: Sehen Sie, wie ein FP32-Tensor wie Q4_K aussehen würde, ohne ihn tatsächlich zu schreiben.</li>
+            </ul>
+
+            <h2>5. Split und Merge</h2>
+            <p>Integrierte Tools für:</p>
+            <ul>
+                <li><strong>Split:</strong> Aufteilen eines großen GGUF-Modells in mehrere Dateien (z.B. 4GB).</li>
+                <li><strong>Merge:</strong> Wiedervereinigen mehrerer GGUF-Shards zu einer einzigen kohärenten Datei.</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

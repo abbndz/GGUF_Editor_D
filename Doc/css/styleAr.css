@@ -1,0 +1,152 @@
+/* Doc/css/style.css */
+:root {
+    --bg-color: #1e1e1e;
+    --text-color: #d4d4d4;
+    --accent-color: #4ec9b0;
+    --panel-bg: #252526;
+    --border-color: #3e3e42;
+    --link-color: #569cd6;
+    --code-bg: #101010;
+    --sidebar-width: 250px;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+/* Support RTL (Right-to-Left) */
+[dir="rtl"] body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+a { color: var(--link-color); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout Container */
+.container {
+    display: flex;
+    min-height: 100vh;
+    /* Important: S'assure que le contenu ne dépasse pas */
+    overflow-x: hidden; 
+}
+
+/* Sidebar Navigation */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--panel-bg);
+    padding: 20px;
+    position: fixed; /* Reste fixe lors du défilement */
+    height: 100%;
+    overflow-y: auto;
+    z-index: 1000;
+    top: 0;
+    /* Par défaut (LTR), à gauche */
+    left: 0;
+    border-right: 1px solid var(--border-color);
+}
+
+/* Adaptation RTL */
+[dir="rtl"] .sidebar {
+    left: auto;
+    right: 0;
+    border-right: none;
+    border-left: 1px solid var(--border-color);
+}
+
+.sidebar h2 { color: var(--accent-color); font-size: 1.2rem; margin-bottom: 20px; }
+[dir="rtl"] .sidebar h2 { text-align: right; }
+
+.nav-links { list-style: none; padding: 0; }
+.nav-links li { margin-bottom: 10px; }
+.nav-links a { color: var(--text-color); display: block; padding: 8px; border-radius: 4px; }
+.nav-links a:hover, .nav-links a.active { background-color: #37373d; color: #fff; }
+
+/* Main Content - C'est ici que la correction majeure se trouve */
+.main-content {
+    width: 100%;
+    padding: 40px;
+    box-sizing: border-box;
+}
+
+/* Mode LTR (Par défaut) */
+/* On pousse le contenu à droite de la sidebar */
+.main-content {
+    margin-left: var(--sidebar-width);
+    margin-right: 0;
+}
+
+/* Mode RTL (Arabe) */
+/* On retire la marge gauche car la sidebar est à droite, 
+   mais on garde une petite marge pour ne pas coller au bord */
+[dir="rtl"] .main-content {
+    margin-left: 0;
+    margin-right: var(--sidebar-width);
+}
+
+/* Si la sidebar n'est pas utilisée (cas rare), le contenu prend 100% */
+.container:has(.sidebar:empty) .main-content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100%;
+}
+
+h1, h2, h3 { color: #fff; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+h1 { font-size: 2.5rem; }
+p { margin-bottom: 15px; }
+
+/* Code Blocks */
+pre {
+    background-color: var(--code-bg);
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    direction: ltr; /* Le code reste toujours LTR */
+    text-align: left;
+    font-size: 0.9em;
+}
+code { font-family: 'Consolas', 'Courier New', monospace; color: var(--accent-color); }
+
+/* Images */
+.screenshot {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin: 20px 0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    display: block;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+th, td {
+    text-align: right; /* Alignement à droite pour l'arabe */
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+[dir="ltr"] th, [dir="ltr"] td { text-align: left; }
+
+th { background-color: var(--panel-bg); color: var(--accent-color); }
+
+/* Specific Pages */
+.hero { text-align: center; padding: 50px 0; }
+.btn {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: #1e1e1e;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    margin-top: 20px;
+}
+.btn:hover { background-color: #fff; text-decoration: none; }

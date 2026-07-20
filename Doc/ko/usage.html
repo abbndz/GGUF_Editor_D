@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザーガイド - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">ホーム</a></li>
+            <li class="nav-item"><a href="features.html">機能</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">ユーザーガイド</a></li>
+            <li class="nav-item"><a href="technical.html">技術情報</a></li>
+            <li class="nav-item"><a href="donate.html">寄付</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>クイックスタートガイド</h1>
+
+            <h2>1. マージのワークフロー</h2>
+            <p>このガイドでは、ベースモデル（A）と重み（B）をマージして新しいモデルを作成する方法を説明します。</p>
+            
+            <img src="../img/workflow_diagram.png" alt="ワークフロー図" class="screenshot">
+
+            <ol>
+                <li><strong>読み込み：</strong>
+                    <ul>
+                        <li>ベースとなる <em>モデル A</em> を Browse & Load します。</li>
+                        <li>特定の重みである <em>モデル B</em> を Browse & Load します。</li>
+                    </ul>
+                </li>
+                <li><strong>選択：</strong>
+                    <ul>
+                        <li>「Model B」タブで転送するテンソルにチェックを入れるか、「Transfer All」を使用します。</li>
+                        <li>層フィルターを使用して指定します（例：`16..32` や `Mod 2` で奇数層）。</li>
+                    </ul>
+                </li>
+                <li><strong>確認（オプション）：</strong>
+                    <ul>
+                        <li>「View Tensors」を開きます。</li>
+                        <li>A と B を読み込み、「Diff (T1-T2)」タブを使用して値の差分を確認します。</li>
+                    </ul>
+                </li>
+                <li><strong>出力：</strong>
+                    <ul>
+                        <li>「Model Out」タブにはマージされたリストが表示されています。</li>
+                        <li>「出力」フィールドに出力パスを設定します。</li>
+                        <li><strong>Save</strong> をクリックします。</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. 可視化の使用</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="可視化ビュー" class="screenshot" style="max-width: 80%;">
+                <p><em>ブロック検出と外れ値を含む可視化の例。</em></p>
+            </div>
+            <h3>ナビゲーション</h3>
+            <ul>
+                <li><strong>下部スライダー：</strong> 水平方向にビューをスクロールします。</li>
+                <li><strong>マウスホイール：</strong> ズームイン/アウト。</li>
+                <li><strong>クリック＆ドラッグ：</strong> ビューウィンドウをパン（移動）します。</li>
+                <li><strong>キーボード：</strong> `+`/`-` でズーム、`<`/`>` でスクロール。</li>
+            </ul>
+            
+            <h3>エクスポート</h3>
+            <p>コンテキストメニューまたはエクスポートボタン（CSV/TXT形式）から、ヒストグラムまたは時系列データに表示されているデータをエクスポートできます。</p>
+
+            <h2>3. 設定</h2>
+            <p><em>設定</em> にアクセスして以下を行います：</p>
+            <ul>
+                <li>外部 DLL の使用を有効/無効にします（高速化）。</li>
+                <li>デフォルトのスプリットサイズを設定します。</li>
+                <li>差分の増幅を設定します（最小限の偏差を確認するため）。</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

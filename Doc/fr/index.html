@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+    <!-- Barre de Navigation Horizontale -->
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html" class="active">Accueil</a></li>
+            <li class="nav-item"><a href="features.html">Fonctionnalités</a></li>
+            <li class="nav-item"><a href="usage.html">Guide d'utilisation</a></li>
+            <li class="nav-item"><a href="technical.html">Technical</a></li>
+            <li class="nav-item"><a href="donate.html">Soutenir</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Bienvenue sur GGUF Editor D++</h1>
+            <p>GGUF Editor D++ est un outil de pointe pour la manipulation, l'analyse et l'optimisation de modèles de langage (LLM) au format <strong>GGUF</strong> et <strong>Safetensors</strong>. Développé en Delphi, il offre une interface performante pour les chercheurs et développeurs.</p>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <img src="../img/screenshot_main.png" alt="Interface Principale" class="screenshot" style="max-width: 80%; margin: 0 auto;">
+                <p><em>L'interface principale : Visualisation des tenseurs et gestion des modèles.</em></p>
+            </div>
+
+            <h2>Pourquoi utiliser GGUF Editor D++ ?</h2>
+            <ul>
+                <li><strong>Multi-Source :</strong> Fusionnez des modèles GGUF et des poids Safetensors PyTorch.</li>
+                <li><strong>Visualisation Temps Réel :</strong> Analysez la distribution et les valeurs des tenseurs avec des graphiques interactifs.</li>
+                <li><strong>Haute Performance :</strong> Utilisation optimisée des DLL (Llama.cpp) pour la quantification/déquantification.</li>
+                <li><strong>Édition Avancée :</strong> Modification des métadonnées (KVs) et des noms de tenseurs via mapping.</li>
+            </ul>
+
+            <h3>Compatibilité</h3>
+            <p>L'outil supporte une large gamme de types de quantisation : Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q8_1, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, Q8_K, IQ4_NL, MXFP4, NVFP4, et plus encore.</p>
+        </div>
+
+        <footer class="footer">
+            &copy; 2026 GGUF Editor D++ By ABBN. Documentation Technique.
+        </footer>
+    </div>
+
+</body>
+</html>

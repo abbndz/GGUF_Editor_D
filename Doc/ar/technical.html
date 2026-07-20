@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البنية التقنية - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">الرئيسية</a></li>
+            <li class="nav-item"><a href="features.html">الميزات</a></li>
+            <li class="nav-item"><a href="usage.html">دليل المستخدم</a></li>
+            <li class="nav-item"><a href="technical.html" class="active">فني</a></li>
+            <li class="nav-item"><a href="donate.html">الدعم</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>البنية التقنية</h1>
+            <p>وثائق مخصصة للمطورين والمتعاونين.</p>
+
+            <h2>التقنيات المستخدمة</h2>
+            <ul>
+                <li><strong>اللغة:</strong> Delphi 10/11/12 (Object Pascal).</li>
+                <li><strong>واجهة المستخدم:</strong> VCL (Visual Component Library).</li>
+                <li><strong>الرسوميات:</strong> TeeChart (للرسوم البيانية المعقدة).</li>
+                <li><strong>FFI:</strong> التحميل الديناميكي لمكتبات C/C++ DLLs (ggml-base.dll).</li>
+            </ul>
+
+            <h2>هيكل الوحدات (Modules)</h2>
+            <table>
+                <tr>
+                    <th>ملف الوحدة</th>
+                    <th>الدور</th>
+                </tr>
+                <tr>
+                    <td><code>uGGUFModel.pas</code></td>
+                    <td>تعريف فئات البيانات (Tensors, KVs).</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFReader.pas</code></td>
+                    <td>القراءة الثنائية لملفات GGUF.</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFWriter.pas</code></td>
+                    <td>الكتابة ومعالجة تدفقات الإخراج.</td>
+                </tr>
+                <tr>
+                    <td><code>uGgmlQuants.pas</code></td>
+                    <td>الواجهة مع وظائف التكميم (DLL أو Impl).</td>
+                </tr>
+                <tr>
+                    <td><code>uViewTensors.pas</code></td>
+                    <td>منطق التصور، اكتشاف الشذوذ والرسوم البيانية.</td>
+                </tr>
+                <tr>
+                    <td><code>uTensorTranspose.pas</code></td>
+                    <td>منطق تحويل المصفوفات (لـ Safetensors).</td>
+                </tr>
+            </table>
+
+            <h2>تنسيق الخرائط (Mapping Format)</h2>
+            <p>ملفات الخرائط هي ملفات نصية (.txt) تحتوي على قواعد <code>pattern=replacement</code>.</p>
+            <pre><code>
+model.layers.0.input_layernorm.weight -> attention.input_layernorm
+model.layers.{}.feed_forward.w1.weight -> mlp.gate
+            </code></pre>
+
+            <h2>إدارة الذاكرة</h2>
+            <p>تستخدم التطبيق نهج "التحميل الكسول" (Lazy Load) للبيانات. لا يتم فك تشفير البيانات الخام في الذاكرة (F32) إلا عند العرض في الرسوم البيانية أو عند التكميم، بهدف تقليل استهلاك الذاكرة العشوائية (RAM) للنماذج الكبيرة جداً.</p>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ بواسطة ABBN.</footer>
+    </div>
+</body>
+</html>

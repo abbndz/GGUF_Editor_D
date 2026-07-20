@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide d'utilisation - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Accueil</a></li>
+            <li class="nav-item"><a href="features.html">Fonctionnalités</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">Guide d'utilisation</a></li>
+            <li class="nav-item"><a href="technical.html">Technical</a></li>
+            <li class="nav-item"><a href="donate.html">Soutenir</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Guide d'Utilisation Rapide</h1>
+
+            <h2>1. Workflow de Fusion (Merge)</h2>
+            <p>Ce guide explique comment fusionner un modèle de base (A) avec des poids (B) pour créer un nouveau modèle.</p>
+            
+            <img src="../img/workflow_diagram.png" alt="Diagramme de Workflow" class="screenshot">
+
+            <ol>
+                <li><strong>Chargement :</strong>
+                    <ul>
+                        <li>Browse & Load <em>Model A</em> (Votre base).</li>
+                        <li>Browse & Load <em>Model B</em> (Vos poids spécifiques).</li>
+                    </ul>
+                </li>
+                <li><strong>Sélection :</strong>
+                    <ul>
+                        <li>Dans l'onglet "Model B", cochez les tenseurs à transférer ou utilisez "Transfer All".</li>
+                        <li>Utilisez les filtres par couches (ex: `16..32` ou `Mod 2` pour les couches impaires).</li>
+                    </ul>
+                </li>
+                <li><strong>Vérification (Optionnel) :</strong>
+                    <ul>
+                        <li>Ouvrez "View Tensors".</li>
+                        <li>Chargez A et B. Utilisez l'onglet "Diff (T1-T2)" pour vérifier les différences de valeurs.</li>
+                    </ul>
+                </li>
+                <li><strong>Sortie :</strong>
+                    <ul>
+                        <li>L'onglet "Model Out" contient maintenant la liste fusionnée.</li>
+                        <li>Définissez le chemin de sortie dans le champ "Sortie".</li>
+                        <li>Cliquez sur <strong>Save</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. Utilisation de la Visualisation</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="Vue Visualisation" class="screenshot" style="max-width: 80%;">
+                <p><em>Exemple de visualisation avec détection des blocs et outliers.</em></p>
+            </div>
+            <h3>Navigation</h3>
+            <ul>
+                <li><strong>Slider en bas :</strong> Fait défiler la vue horizontalement.</li>
+                <li><strong>Molette de la souris :</strong> Zoom avant/arrière.</li>
+                <li><strong>Clic-Glisser :</strong> Déplacer la fenêtre de vue (Pan).</li>
+                <li><strong>Touches Clavier :</strong> Utiliser `+`/`-` pour zoomer, `<`/`>` pour glisser.</li>
+            </ul>
+            
+            <h3>Export</h3>
+            <p>Vous pouvez exporter les données affichées dans l'histogramme ou les séries temporelles via le menu contextuel ou les boutons d'export (format CSV/TXT).</p>
+
+            <h2>3. Configuration</h2>
+            <p>Accédez aux <em>Paramètres</em> pour :</p>
+            <ul>
+                <li>Activer/ désactiver l'utilisation des DLL externes (plus rapide).</li>
+                <li>Réglages de la taille de split par défaut.</li>
+                <li>Amplification des différences (pour voir les écarts minimes).</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

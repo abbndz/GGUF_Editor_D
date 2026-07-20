@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funzionalità - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Home</a></li>
+            <li class="nav-item"><a href="features.html" class="active">Funzionalità</a></li>
+            <li class="nav-item"><a href="usage.html">Guida Utente</a></li>
+            <li class="nav-item"><a href="technical.html">Tecnico</a></li>
+            <li class="nav-item"><a href="donate.html">Supporto</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Funzionalità Dettagliate</h1>
+
+            <h2>1. Modifica e Fusione di Modelli</h2>
+            <p>Lo strumento consente di caricare fino a tre fonti di modelli contemporaneamente:</p>
+            <ul>
+                <li><strong>Modello A (GGUF):</strong> Modello di base.</li>
+                <li><strong>Modello B (GGUF):</strong> Secondo modello per la fusione (merging).</li>
+                <li><strong>Modello S (Safetensors):</strong> Integrazione di pesi PyTorch.</li>
+            </ul>
+            <p>Puoi trasferire tensori specifici o per layer (tutti i "blks", o layer dispari/pari) verso il modello di output.</p>
+
+            <h2>2. Visualizzazione e Analisi</h2>
+            <p>Accedi alla vista "Tensors" per ispezionare l'interno dei tuoi modelli.</p>
+            <ul>
+                <li><strong>Grafici Temporali (Serie):</strong> Visualizza i valori float lungo un tensore. Rileva anomalie e outlier.</li>
+                <li><strong>Confronto (T1 - T2):</strong> Sottrai due tensori per vedere la differenza (utile per l'analisi di fusione).</li>
+                <li><strong>Istogrammi:</strong> Analizza la distribuzione dei pesi (normale, gaussiana, ecc.).</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="Vista Visualizzazione" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. Mapping dei Nomi</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="Vista Mapping" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>Il motore di mapping permette di rinominare automaticamente i tensori per adattare un modello a un'architettura target.</p>
+            <ul>
+                <li>Supporto per pattern generici (es: `blk.{}.attn.weight`).</li>
+                <li>File di configurazione esterni (.txt).</li>
+                <li>Gestione dei prefissi ignorati.</li>
+            </ul>
+
+            <h2>4. Quantizzazione Intelligente</h2>
+            <p>Conversione dei tipi di tensori in tempo reale:</p>
+            <ul>
+                <li><strong>DLL Llama.cpp:</strong> Utilizzo delle librerie native per una dequantizzazione ad alta fedeltà (RMSE minimizzato).</li>
+                <li><strong>Modalità Impl:</strong> Algoritmo software alternativo per la massima stabilità o quando la DLL non è disponibile.</li>
+                <li>Simulazione di quantizzazione: Vedi come apparirebbe un tensore FP32 convertito in Q4_K senza scriverlo.</li>
+            </ul>
+
+            <h2>5. Split e Merge</h2>
+            <p>Strumenti integrati per:</p>
+            <ul>
+                <li><strong>Split (Divisione):</strong> Dividere un modello GGUF grande in più file (es: 4GB).</li>
+                <li><strong>Merge (Fusione):</strong> Ricombinare più shard GGUF in un unico file coerente.</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

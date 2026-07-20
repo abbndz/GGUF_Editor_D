@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía de Uso - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Inicio</a></li>
+            <li class="nav-item"><a href="features.html">Características</a></li>
+            <li class="nav-item"><a href="usage.html" class="active">Guía de Usuario</a></li>
+            <li class="nav-item"><a href="technical.html">Técnico</a></li>
+            <li class="nav-item"><a href="donate.html">Apoyar</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Guía Rápida de Uso</h1>
+
+            <h2>1. Flujo de Trabajo de Fusión (Merge)</h2>
+            <p>Esta guía explica cómo fusionar un modelo base (A) con pesos (B) para crear un nuevo modelo.</p>
+            
+            <img src="../img/workflow_diagram.png" alt="Diagrama de Flujo" class="screenshot">
+
+            <ol>
+                <li><strong>Carga:</strong>
+                    <ul>
+                        <li>Navegar y Cargar <em>Modelo A</em> (Tu base).</li>
+                        <li>Navegar y Cargar <em>Modelo B</em> (Tus pesos específicos).</li>
+                    </ul>
+                </li>
+                <li><strong>Selección:</strong>
+                    <ul>
+                        <li>En la pestaña "Model B", marca los tensores a transferir o usa "Transfer All".</li>
+                        <li>Usa filtros por capas (ej. `16..32` o `Mod 2` para capas impares).</li>
+                    </ul>
+                </li>
+                <li><strong>Verificación (Opcional):</strong>
+                    <ul>
+                        <li>Abrir "View Tensors".</li>
+                        <li>Cargar A y B. Usar la pestaña "Diff (T1-T2)" para verificar las diferencias de valores.</li>
+                    </ul>
+                </li>
+                <li><strong>Salida:</strong>
+                    <ul>
+                        <li>La pestaña "Model Out" contiene ahora la lista fusionada.</li>
+                        <li>Define la ruta de salida en el campo "Output".</li>
+                        <li>Haz clic en <strong>Save</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h2>2. Uso de la Visualización</h2>
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view.png" alt="Vista de Visualización" class="screenshot" style="max-width: 80%;">
+                <p><em>Ejemplo de visualización con detección de bloques y outliers.</em></p>
+            </div>
+            <h3>Navegación</h3>
+            <ul>
+                <li><strong>Deslizador inferior:</strong> Desplaza la vista horizontalmente.</li>
+                <li><strong>Rueda del ratón:</strong> Zoom in/out.</li>
+                <li><strong>Clic y arrastrar:</strong> Mover la ventana de vista (Pan).</li>
+                <li><strong>Teclado:</strong> Usar `+`/`-` para zoom, `<`/`>` para desplazar.</li>
+            </ul>
+            
+            <h3>Exportar</h3>
+            <p>Puedes exportar los datos mostrados en el histograma o las series temporales mediante el menú contextual o los botones de exportar (formato CSV/TXT).</p>
+
+            <h2>3. Configuración</h2>
+            <p>Accede a <em>Ajustes</em> para:</p>
+            <ul>
+                <li>Activar/Desactivar el uso de DLLs externas (más rápido).</li>
+                <li>Ajustes del tamaño de split por defecto.</li>
+                <li>Amplificación de diferencias (para ver desviaciones mínimas).</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

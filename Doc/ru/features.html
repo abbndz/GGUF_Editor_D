@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Возможности - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Главная</a></li>
+            <li class="nav-item"><a href="features.html" class="active">Возможности</a></li>
+            <li class="nav-item"><a href="usage.html">Руководство</a></li>
+            <li class="nav-item"><a href="technical.html">Технически</a></li>
+            <li class="nav-item"><a href="donate.html">Поддержка</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Детальные возможности</h1>
+
+            <h2>1. Редактирование и объединение моделей</h2>
+            <p>Инструмент позволяет загружать до трех источников моделей одновременно:</p>
+            <ul>
+                <li><strong>Модель A (GGUF):</strong> Базовая модель.</li>
+                <li><strong>Модель B (GGUF):</strong> Вторая модель для объединения (merge).</li>
+                <li><strong>Модель S (Safetensors):</strong> Интеграция весов PyTorch.</li>
+            </ul>
+            <p>Вы можете переносить отдельные тензоры или целые слои (все "blks" или четные/нечетные слои) в выходную модель.</p>
+
+            <h2>2. Визуализация и анализ</h2>
+            <p>Доступ к представлению "Тензоры" для инспекции внутренних данных ваших моделей.</p>
+            <ul>
+                <li><strong>Временные ряды (Графики):</strong> Визуализация значений float вдоль тензора. Обнаружение аномалий и выбросов.</li>
+                <li><strong>Сравнение (T1 - T2):</strong> Вычитание двух тензоров для просмотра разницы (полезно для анализа слияния).</li>
+                <li><strong>Гистограммы:</strong> Анализ распределения весов (нормальное, гауссовское и т.д.).</li>
+            </ul>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_view1.png" alt="Вид визуализации" class="screenshot" style="max-width: 80%;">
+            </div>
+
+            <h2>3. Маппинг имен (Name Mapping)</h2>
+			
+			<div style="text-align: center; margin: 20px 0;">
+                <img src="../img/screenshot_mapping.png" alt="Вид маппинга" class="screenshot" style="max-width: 80%;">
+            </div>
+			
+            <p>Движок маппинга позволяет автоматически переименовывать тензоры для адаптации модели к целевой архитектуре.</p>
+            <ul>
+                <li>Поддержка общих шаблонов (например, `blk.{}.attn.weight`).</li>
+                <li>Внешние файлы конфигурации (.txt).</li>
+                <li>Управление игнорируемыми префиксами.</li>
+            </ul>
+
+            <h2>4. Интеллектуальное квантование</h2>
+            <p>Конвертация типов тензоров в реальном времени:</p>
+            <ul>
+                <li><strong>DLL Llama.cpp:</strong> Использование нативных библиотек для высококачественного деквантования (минимизация RMSE).</li>
+                <li><strong>Режим Impl:</strong> Альтернативный программный алгоритм для максимальной стабильности или когда DLL недоступна.</li>
+                <li>Симуляция квантования: Посмотрите, как будет выглядеть FP32 тензор после конвертации в Q4_K, не записывая его.</li>
+            </ul>
+
+            <h2>5. Разделение и Объединение (Split and Merge)</h2>
+            <p>Интегрированные инструменты для:</p>
+            <ul>
+                <li><strong>Разделение (Split):</strong> Разделение большой GGUF модели на несколько файлов (например, по 4 ГБ).</li>
+                <li><strong>Объединение (Merge):</strong> Сборка нескольких фрагментов GGUF в один согласованный файл.</li>
+            </ul>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

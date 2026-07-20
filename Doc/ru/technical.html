@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Техническая архитектура - GGUF Editor D++</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header class="top-nav">
+        <a href="index.html" class="nav-brand">GGUF Editor D++</a>
+        <ul class="nav-menu">
+            <li class="nav-item"><a href="index.html">Главная</a></li>
+            <li class="nav-item"><a href="features.html">Возможности</a></li>
+            <li class="nav-item"><a href="usage.html">Руководство</a></li>
+            <li class="nav-item"><a href="technical.html" class="active">Технически</a></li>
+            <li class="nav-item"><a href="donate.html">Поддержка</a></li>
+        </ul>
+    </header>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h1>Техническая архитектура</h1>
+            <p>Документация для разработчиков и контрибьюторов.</p>
+
+            <h2>Используемые технологии</h2>
+            <ul>
+                <li><strong>Язык:</strong> Delphi 10/11/12 (Object Pascal).</li>
+                <li><strong>GUI:</strong> VCL (Visual Component Library).</li>
+                <li><strong>Графика:</strong> TeeChart (для сложных графиков).</li>
+                <li><strong>FFI:</strong> Динамическая загрузка DLL C/C++ (ggml-base.dll).</li>
+            </ul>
+
+            <h2>Структура модулей</h2>
+            <table>
+                <tr>
+                    <th>Файл Unit</th>
+                    <th>Роль</th>
+                </tr>
+                <tr>
+                    <td><code>uGGUFModel.pas</code></td>
+                    <td>Определение классов данных (Тензоры, KVs).</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFReader.pas</code></td>
+                    <td>Бинарное чтение файлов GGUF.</td>
+                </tr>
+                <tr>
+                    <td><code>uGGUFWriter.pas</code></td>
+                    <td>Запись и манипуляция потоками вывода.</td>
+                </tr>
+                <tr>
+                    <td><code>uGgmlQuants.pas</code></td>
+                    <td>Интерфейс с функциями квантования (DLL или Impl).</td>
+                </tr>
+                <tr>
+                    <td><code>uViewTensors.pas</code></td>
+                    <td>Логика визуализации, обнаружения аномалий и графиков.</td>
+                </tr>
+                <tr>
+                    <td><code>uTensorTranspose.pas</code></td>
+                    <td>Логика транспонирования матриц (для Safetensors).</td>
+                </tr>
+            </table>
+
+            <h2>Формат маппинга</h2>
+            <p>Файлы маппинга — это текстовые файлы (.txt), содержащие правила <code>pattern=replacement</code>.</p>
+            <pre><code>
+model.layers.0.input_layernorm.weight -> attention.input_layernorm
+model.layers.{}.feed_forward.w1.weight -> mlp.gate
+            </code></pre>
+
+            <h2>Управление памятью</h2>
+            <p>Приложение использует подход "Lazy Load" для данных тензоров. Сырые данные декодируются в память (F32) только в момент отображения в графиках или квантования, чтобы минимизировать потребление RAM при работе с очень большими моделями.</p>
+        </div>
+        <footer class="footer">&copy; 2026 GGUF Editor D++ By ABBN.</footer>
+    </div>
+</body>
+</html>

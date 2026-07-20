@@ -1,0 +1,183 @@
+/* Doc/ar/style.css */
+
+:root {
+    --primary-color: #2c3e50; /* Bleu foncé */
+    --accent-color: #3498db;  /* Bleu clair */
+    --bg-color: #f8f9fa;      /* Gris très clair */
+    --text-color: #333333;
+    --white: #ffffff;
+    --border-color: #e1e4e8;
+    /* Police compatible avec l'arabe */
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.8; /* Légèrement plus d'espace pour l'arabe */
+}
+
+/* --- NAVIGATION --- */
+.top-nav {
+    background-color: var(--primary-color);
+    color: var(--white);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--white);
+    text-decoration: none;
+}
+
+.nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+.nav-item a {
+    display: block;
+    padding: 0 15px;
+    color: #bdc3c7;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.3s ease;
+    height: 60px;
+    line-height: 60px;
+}
+
+.nav-item a:hover, .nav-item a.active {
+    color: var(--white);
+    border-bottom: 3px solid var(--accent-color);
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* --- CONTENU --- */
+.main-container {
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background-color: var(--white);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    min-height: 80vh;
+}
+
+.content-section {
+    padding: 20px 40px;
+}
+
+h1 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--accent-color);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-top: 30px;
+}
+
+h3 {
+    color: #555;
+}
+
+p {
+    margin-bottom: 15px;
+}
+
+/* --- IMAGES --- */
+.screenshot {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin: 20px 0;
+    display: block;
+}
+
+/* --- TABLEAUX (Optimisé RTL) --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+th, td {
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    text-align: left; /* L'arabe s'écrit de droite, mais l'alignement gauche est souvent utilisé pour les données, sinon changer en right */
+}
+
+th {
+    background-color: #f1f3f5;
+    color: var(--primary-color);
+}
+
+/* --- CODE --- */
+code {
+    background-color: #f4f4f4;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: 'Consolas', monospace;
+    color: #e83e8c;
+}
+
+/* --- FOOTER --- */
+.footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9rem;
+    color: #777;
+    margin-top: 40px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* --- RTL SPECIFIC FIXES --- */
+[dir="rtl"] {
+    direction: rtl;
+}
+
+[dir="rtl"] ul, [dir="rtl"] ol {
+    padding-right: 20px;
+    padding-left: 0;
+}
+
+[dir="rtl"] td, [dir="rtl"] th {
+    text-align: right;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .top-nav {
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+    }
+    .nav-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .nav-item a {
+        padding: 10px;
+        height: auto;
+        line-height: normal;
+    }
+    .content-section {
+        padding: 20px;
+    }
+}
