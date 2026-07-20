@@ -10,10 +10,10 @@
 
   *Bridge the gap between complex Python scripts and simple inference tools.*
 
-  [📖 Documentation](Doc/index.html) • [✨ Features](#-key-features) • [⬇️ Download](#-download)
+  [📖 Documentation](Doc/index.md) • [✨ Features](#-key-features) • [⬇️ Download](#-download)
 
 </div>
-
+ 
 ---
 
 ## 🚀 Overview
@@ -68,11 +68,7 @@ Built for performance and low memory footprint.
 
 ---
 
-## 🌍 Multilingual Documentation
-
-We aim to support the global AI community. Full guides are available in:
-
-[🇺🇸 English](Doc/en/index.html) | [🇫🇷 Français](Doc/fr/index.html) | [🇨🇳 中文](Doc/zh/index.html) | [🇮🇹 Italiano](Doc/it/index.html) | [🇩🇪 Deutsch](Doc/de/index.html) | [🇷🇺 Русский](Doc/ru/index.html) | [🇪🇸 Español](Doc/es/index.html) | [🇯🇵 日本語](Doc/ja/index.html) | [🇰🇷 한국어](Doc/ko/index.html) | [🇸🇦 العربية](Doc/ar/index.html)
+##   [📖 Documentation](Doc/index.md) 
 
 ---
 
