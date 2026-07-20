@@ -46,5 +46,6 @@ Integrated tools for:
 - **Merge:** Recombine multiple GGUF shards into a single coherent file.
 
 ---
-
+[ 🏠 Home ](index.md)  [⚙️ Features ](features.md)  [📘 User Guide](usage.md)  [🔧 Technical ](technical.md) [ ❤️ Support ](donate.md) 
+---
 © 2026 GGUF Editor D++ By ABBN.
