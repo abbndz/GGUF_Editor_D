@@ -33,5 +33,7 @@ model.layers.{}.feed_forward.w1.weight -> mlp.gate
 The application uses a **"Lazy Load"** approach for tensor data. Raw data is only decoded into memory (F32) at the moment of display in charts or quantization, in order to minimize RAM footprint on very large models.
 
 ---
+[ 🏠 Home ](index.md)  [⚙️ Features ](features.md)  [📘 User Guide](usage.md)  [🔧 Technical ](technical.md) [ ❤️ Support ](donate.md) 
+---
 
 © 2026 GGUF Editor D++ By ABBN.
