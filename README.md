@@ -3,11 +3,6 @@
 <div align=\"center\">
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue.svg)](#-download)
-[![Big models](https://img.shields.io/badge/Verified%20on-160%20GB-brightgreen.svg)](#faq)
-[![Format](https://img.shields.io/badge/Reads-GGUF%20%C2%B7%20Safetensors-green.svg)](#supported-tensor-types)
-[![llama.cpp](https://img.shields.io/badge/Output-llama.cpp%20compatible-brightgreen.svg)](#compatibility)
-[![No Python](https://img.shields.io/badge/Python%20required-NO-informational.svg)](#faq)
-[![Language](https://img.shields.io/badge/Built%20with-Delphi%20%2F%20Object%20Pascal-orange.svg)](https://www.embarcadero.com/products/delphi)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ### A Windows viewer for GGUF and Safetensors models.
