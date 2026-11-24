@@ -3,9 +3,7 @@
 interface
 
 uses
-  System.Generics.Collections, System.Classes,
-  StrUtils, // Nécessaire pour ReplaceStr, ContainsStr, EndsWithStr, StartsWithStr
-  SysUtils; // Nécessaire pour les fonctions ANSI si nécessaire
+  System.Generics.Collections, System.Classes, StrUtils, SysUtils;
 
 type
   TGGUFKeyFamily = (kfCustom = 0, // Index 0 pour l'UI "Custom"
@@ -29,7 +27,6 @@ type
 
     class procedure Initialize; static;
   public
-    class function GetFamilyNames0: TArray<string>; static;
     class function GetFamilyNames: TStringList;
     class function GetKeysForFamily(const Family: TGGUFKeyFamily; const Architecture: string): TStringList; static;
     class function GetFamilyForKey(const Key: string): TGGUFKeyFamily; static;
@@ -195,7 +192,7 @@ begin
   FKeys[Integer(kfRope)][15] := '{arch}.rope.scaling.yarn_beta_slow';
 
   // kfTokenizer (5)
-  SetLength(FKeys[Integer(kfTokenizer)], 36);
+  SetLength(FKeys[Integer(kfTokenizer)], 35);
   FKeys[Integer(kfTokenizer)][0] := 'tokenizer.ggml.model';
   FKeys[Integer(kfTokenizer)][1] := 'tokenizer.ggml.pre';
   FKeys[Integer(kfTokenizer)][2] := 'tokenizer.ggml.tokens';
@@ -356,18 +353,6 @@ begin
   FInitialized := True;
 end;
 
-class function TGGUFKeyManager.GetFamilyNames0: TArray<string>;
-var
-  I: Integer;
-begin
-  Initialize;
-  // Index 0 = "Autre", puis les 19 familles
-  SetLength(Result, 20);
-  Result[0] := '(Autre)';
-  for I := Low(FKeyFamilies) to High(FKeyFamilies) do
-    Result[I + 1] := FKeyFamilies[I].DisplayName;
-end;
-
 class function TGGUFKeyManager.GetFamilyNames: TStringList;
 var
   I: Integer;
@@ -375,7 +360,7 @@ begin
   Initialize;
   // Index 0 = "Autre", puis les 19 familles   *
   Result := TStringList.Create;
-  Result.Add('(Autre)');
+  Result.Add('(Autre)'); // index 0 = kfCustom
   for I := Low(FKeyFamilies) + 1 to High(FKeyFamilies) do
     Result.Add(FKeyFamilies[I].DisplayName);
 end;
@@ -394,12 +379,10 @@ var
 begin
   Initialize;
   Result := TStringList.Create;
-
+  if Architecture = '' then
+    Exit;
   if Family = kfCustom then
     Exit;
-
-  // Vérifier que l'index de l'énumération est valide par rapport à FKeys
-  // FKeys est indexé par Integer(Family)
   if (Integer(Family) >= Low(FKeys)) and (Integer(Family) <= High(FKeys)) then
   begin
     for I := Low(FKeys[Integer(Family)]) to High(FKeys[Integer(Family)]) do
@@ -411,40 +394,31 @@ end;
 
 class function TGGUFKeyManager.GetFamilyForKey(const Key: string): TGGUFKeyFamily;
 var
-  I: Integer;
-  Prefix: string;
-  CheckKey: string;
+  I, P, MatchLen, BestLen: Integer;
+  K, Pfx, Tail: string;
 begin
   Initialize;
   Result := kfCustom;
-
-  // Vérifier les préfixes
-  for I := Low(FKeyFamilies) to High(FKeyFamilies) do
+  K := LowerCase(Key);
+  BestLen := 0;
+  for I := Integer(kfGeneral) to High(FKeyFamilies) do
   begin
-    Prefix := FKeyFamilies[I].PrefixTemplate;
-
-    // Remplacer {arch} dans le préfixe pour obtenir le suffixe à rechercher
-    CheckKey := Prefix.Replace('{arch}', '');
-
-    if Prefix.Contains('{arch}') then
+    Pfx := LowerCase(FKeyFamilies[I].PrefixTemplate);
+    MatchLen := 0;
+    if Pos('{arch}', Pfx) > 0 then
     begin
-      // Pour les préfixes avec {arch}, on vérifie si la clé se termine par ce suffixe
-      // Utilisation de EndsWithStr de SysUtils/StrUtils
-      if EndsStr(Key, CheckKey) then
-      begin
-        Result := TGGUFKeyFamily(I + 1); // +1 car kfCustom est 0
-        Exit;
-      end;
+      // '{arch}.attention.' -> '.attention.' , à retrouver en "arch.<suffixe>"
+      Tail := StringReplace(Pfx, '{arch}', '', [rfReplaceAll]);
+      P := Pos(Tail, K);
+      if (P > 1) and (K[P - 1] = '.') then
+        MatchLen := Length(Tail);
     end
-    else
+    else if StartsStr(Pfx, K) then          // <<< l'ordre correct
+      MatchLen := Length(Pfx);
+    if MatchLen > BestLen then              // préfixe le plus spécifique gagne
     begin
-      // Préfixe fixe : on vérifie si la clé commence par le préfixe
-      // Utilisation de StartsWithStr de SysUtils/StrUtils
-      if StartsStr(Key, Prefix) then
-      begin
-        Result := TGGUFKeyFamily(I + 1);
-        Exit;
-      end;
+      BestLen := MatchLen;
+      Result := TGGUFKeyFamily(I);
     end;
   end;
 end;

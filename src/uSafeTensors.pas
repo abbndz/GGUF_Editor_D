@@ -3,7 +3,7 @@
 interface
 
 uses
-  Classes, SysUtils, uBinIO, uMiniJSON, Generics.Collections;
+  Classes, SysUtils, uBinIO, uMiniJSON, Generics.Collections, uLog, uStrutils;
 
 type
   TSafeTensorEntry = class
@@ -80,7 +80,7 @@ var
   HeaderBytes: TBytes;
   HeaderJSON: UnicodeString;
   Root, Obj, V: TMJValue;
-  I, J: Integer;
+  I, J,k : Integer;
   Key: UnicodeString;
   Entry: TSafeTensorEntry;
   NumVal: Int64;
@@ -93,18 +93,19 @@ begin
     try
       HeaderSize := R.ReadU64;
 
-
       if HeaderSize > UInt64(1024 * 1024 * 200) then
         raise Exception.Create('Safetensors: Header trop volumineux');
 
       HeaderBytes := R.ReadBytes(Integer(HeaderSize));
-      HeaderJSON := UTF8Decode(AnsiString(PAnsiChar(@HeaderBytes[0])));
+      //HeaderJSON := UTF8Decode(AnsiString(PAnsiChar(@HeaderBytes[0])));
+      HeaderJSON := TEncoding.UTF8.GetString(HeaderBytes);
+
 
       Root := MJParse(HeaderJSON);
       try
         if Root.Kind <> mjObject then
           raise Exception.Create('Safetensors: Header JSON invalide');
-
+        k := 0;
         for I := 0 to Root.ObjKeys.Count - 1 do
         begin
           Key := Root.ObjKeys[I];
@@ -151,6 +152,10 @@ begin
           end;
           Entry.HeaderDataStart := 8 + HeaderSize; // Position où les données commencent dans CE fichier
           Meta.Entries.Add(Entry);
+          if LogIsOn(lvInfo) then
+            LogI('[Safe-R] %d tensor - "%s" type=%s shape=%s size=%s ', //
+            [k,  string(Entry.Name), Entry.DType , TensorShapeText(Entry.ShapeArray), FormatBytes2f(Entry.ByteSize)]);
+          k := k +1;
         end;
       finally
         Root.Free;
@@ -166,7 +171,7 @@ end;
 function LoadSafeTensorsMeta(const FileName: string): TSafeTensorsMeta;
 var
   I, PosOfOf: Integer;
-  BaseName, PartName, sNo: string;
+  BaseName, sNo: string;
   TotalCount, CurrentNo: Integer;
   SingleFileSize: Int64;
   TargetFile: string;
@@ -238,7 +243,8 @@ begin
   // Utilisation de Entry.SourceFile pour être sûr de lire le bon shard
   FS := TFileStream.Create(Entry.SourceFile, fmOpenRead or fmShareDenyWrite);
   try
-    FS.Position := Entry.OffsetStart;
+    //FS.Position := Entry.OffsetStart;
+    FS.Position := Entry.HeaderDataStart + Entry.OffsetStart;
     if FS.Read(Result[0], ReadSize) <> ReadSize then
       raise Exception.Create('Safetensors: Lecture incomplète pour ' + Entry.Name);
   finally

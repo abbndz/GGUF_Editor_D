@@ -149,7 +149,6 @@ object FrmMappedNamesManager: TFrmMappedNamesManager
         TabOrder = 2
         ViewStyle = vsReport
         OnSelectItem = lvPrefixesSelectItem
-        ExplicitTop = 66
       end
       object btnDeletePrefix: TButton
         Left = 408
@@ -274,7 +273,6 @@ object FrmMappedNamesManager: TFrmMappedNamesManager
     end
     object miClearAll: TMenuItem
       Caption = 'Tout Effacer'
-      OnClick = miClearAllClick
     end
   end
 end

@@ -51,7 +51,7 @@ object FrmAbout: TFrmAbout
       Align = alBottom
       Alignment = taCenter
       AutoSize = False
-      Caption = #39'Build: 1.0.32.112 (05/07/2026)'#39
+      Caption = #39'Build: 1.2.32.236 (21/11/2026)'#39
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clBtnText
       Font.Height = -12
@@ -71,7 +71,6 @@ object FrmAbout: TFrmAbout
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitHeight = 190
     object lblDescription: TLabel
       AlignWithMargins = True
       Left = 3
@@ -174,7 +173,6 @@ object FrmAbout: TFrmAbout
     Align = alBottom
     BevelOuter = bvNone
     TabOrder = 3
-    ExplicitTop = 345
     object btnOk: TButton
       Left = 158
       Top = 5

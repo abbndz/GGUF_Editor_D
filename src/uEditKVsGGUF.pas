@@ -4,8 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, IOUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ComCtrls, ExtCtrls, Graphics,
-  System.StrUtils, Generics.Collections,
-  uGGUFModel, uGGUFReader, uGGUFWriter, uGGUFTypes, uGGMLTypes, uGgufStrUtils, uMath, uKVsGGUFConst;
+  System.StrUtils, Generics.Collections, System.UITypes, System.Contnrs, uGGUFModel, uGGUFReader, uGGUFWriter,
+  uGGUFTypes, uGGMLTypes, uStrUtils, uMath, uKVsGGUFConst, Vcl.Menus, uLog;
 
 type
   TfrmEditKVsGGUF = class(TForm)
@@ -15,12 +15,15 @@ type
     TabSheetModelOut: TTabSheet;
     grpFilter1: TGroupBox;
     grpFilter2: TGroupBox;
+    grpFilter3: TGroupBox;
     grpFilterOut: TGroupBox;
     lblFilter1: TLabel;
     lblFilter2: TLabel;
+    lblFilter3: TLabel;
     lblFilterOut: TLabel;
     edtFilter1: TEdit;
     edtFilter2: TEdit;
+    edtFilter3: TEdit;
     edtFilterOut: TEdit;
     pnlTransfer1: TPanel;
     pnlTransfer2: TPanel;
@@ -40,6 +43,7 @@ type
     cbType: TComboBox;
     lvKVs1: TListView;
     lvKVs2: TListView;
+    lvKVs3: TListView;
     lvKVsOut: TListView;
     btnImportKVs: TButton;
     btnExportKVs: TButton;
@@ -47,17 +51,25 @@ type
     SaveDialog1: TSaveDialog;
     btnClearFText1: TButton;
     btnClearFText2: TButton;
+    btnClearFText3: TButton;
     btnClearFTextO: TButton;
     Splitter1: TSplitter;
     edtKey: TEdit;
     ProgressBar1: TProgressBar;
+    btnUp: TButton;
+    btnDown: TButton;
+    pmInputKVs: TPopupMenu;
+    miTransferSelected: TMenuItem;
+    miTransferAll: TMenuItem;
+    TabSheetModel3: TTabSheet;
+    pnlTransfer3: TPanel;
+    btnTransferAll3: TButton;
+    btnTransferSel3: TButton;
 
     procedure FormCreate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
     procedure edtFilterChange(Sender: TObject);
     procedure lvKVsSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-    procedure btnTransferAllClick(Sender: TObject);
-    procedure btnTransferSelClick(Sender: TObject);
     procedure btnUpsertClick(Sender: TObject);
     procedure btnUncheckClick(Sender: TObject);
     procedure btnEditStrArrayClick(Sender: TObject);
@@ -80,26 +92,38 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure btnExportKVsClick(Sender: TObject);
     procedure btnImportKVsClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btnUpClick(Sender: TObject);
+    procedure btnDownClick(Sender: TObject);
+    procedure miTransferSelectedClick(Sender: TObject);
+    procedure miTransferAllClick(Sender: TObject);
+    procedure btnTransferSel1Click(Sender: TObject);
+    procedure btnTransferAll1Click(Sender: TObject);
+    procedure lvKVs3CustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure btnClearFText3Click(Sender: TObject);
+    procedure DetachModels;
   private
-    FModelA, FModelB, FModelOut: TGGUFFile;
-    FCurrentTab: Integer;
-    FMaxArrayItems1: Integer;
-
+    FModelA, FModelB, FModelC, FModelOut: TGGUFFile;
     FDiffOutCache: TDictionary<string, Boolean>; // Cache pour les clés différentes
-    FDiffACache: TDictionary<string, Boolean>; // Cache pour les clés différentes entre 1 et 2
+    FDiffABCache: TDictionary<string, Boolean>; // Cache pour les clés différentes entre 1 et 2
+    FDiffACCache: TDictionary<string, Boolean>; // Cache pour les clés différentes entre 1 et 2
     FDiffBCache: TDictionary<string, Boolean>; // Cache pour les clés différentes entre 1 et 2
+    FDiffCCache: TDictionary<string, Boolean>; // Cache pour les clés différentes entre 1 et 3
     FDiffOutCacheDirty: Boolean;
     FDiffABCacheDirty: Boolean;
+    FDiffACCacheDirty: Boolean;
 
     FLastUIUpdateTick: Int64;
 
     procedure EnabledBtns(e: Boolean);
 
     procedure UpsertToOut(KV: TGGUFKeyValue);
-    procedure UpdateDiffABOutCache;
-    procedure UpdateDiffABCache;
-    procedure Log(const S: string);
-    procedure RebuildList(AList: TListView; AModel: TGGUFFile; const Filter: string);
+    procedure UpdateDiffABCOutCache(AsStrFull : boolean = False);
+    procedure UpdateDiffABCache(AsStrFull : boolean = False);
+    procedure UpdateDiffACCache(AsStrFull : boolean = False);
+    procedure Log(const S: string; Level: TLogLevel = lvTrace);
+    procedure RebuildList(AList: TListView; AModel: TGGUFFile; Filter: string);
     procedure TransferToOut(ASourceId: Integer; AAll: Boolean);
     function PassFilter(const Key, FilterText: string): Boolean;
     procedure LoadSelectedToEditors(KV: TGGUFKeyValue);
@@ -107,6 +131,7 @@ type
   public
     property ModelA: TGGUFFile read FModelA write FModelA;
     property ModelB: TGGUFFile read FModelB write FModelB;
+    property ModelC: TGGUFFile read FModelC write FModelC;
     property ModelOut: TGGUFFile read FModelOut write FModelOut;
     procedure AddNewKeyValue(NewKV: TGGUFKeyValue);
     procedure RefreshAll;
@@ -119,7 +144,7 @@ var
 
 implementation
 
-uses uEditArrayDlg, uEditStringDlg, uEditKVsGGUFNewKey, uLangManager, uLog;
+uses uEditArrayDlg, uEditStringDlg, uEditKVsGGUFNewKey, uEditKVFileTypeDlg, uLangManager, uAppConfig;
 
 {$R *.dfm}
 
@@ -146,8 +171,6 @@ end;
 
 procedure TfrmEditKVsGGUF.OnProgressEventSave(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64);
 var
-  ElapsedMs: Int64;
-  SpeedMBs: Double;
   aPerc: Integer;
   CurrentUIUpdateTick: Int64;
 begin
@@ -173,31 +196,69 @@ begin
     end);
 end;
 
+procedure TfrmEditKVsGGUF.DetachModels;
+begin
+  // 1. On vide les ListView pour ne plus laisser de Item.Data pointant
+  //    vers des TGGUFKeyValue appartenant à des modèles qui seront libérés.
+  if Assigned(lvKVs1) then lvKVs1.Items.Clear;
+  if Assigned(lvKVs2) then lvKVs2.Items.Clear;
+  if Assigned(lvKVs3) then lvKVs3.Items.Clear;
+  if Assigned(lvKVsOut) then lvKVsOut.Items.Clear;
+
+  // 2. On vide les caches de diff.
+  if Assigned(FDiffOutCache) then FDiffOutCache.Clear;
+  if Assigned(FDiffABCache) then FDiffABCache.Clear;
+  if Assigned(FDiffACCache) then FDiffACCache.Clear;
+  if Assigned(FDiffBCache) then FDiffBCache.Clear;
+  if Assigned(FDiffCCache) then FDiffCCache.Clear;
+
+  // 3. On coupe les références modèles.
+  FModelA := nil;
+  FModelB := nil;
+  FModelC := nil;
+  FModelOut := nil;
+
+  // 4. Optionnel mais propre : on nettoie les éditeurs.
+  edtKey.Text := '';
+  if Assigned(cbType) then
+    cbType.ItemIndex := cbType.Items.IndexOf('STRING');
+
+  if Assigned(memoValue) then
+    memoValue.Clear;
+end;
+
+
 { INITIALISATION }
+procedure TfrmEditKVsGGUF.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  cfg.FrmEditKVsGGUF_Left := Left;
+  cfg.FrmEditKVsGGUF_Top := Top;
+  cfg.FrmEditKVsGGUF_Width := Width;
+  cfg.FrmEditKVsGGUF_Height := Height;
+end;
+
 procedure TfrmEditKVsGGUF.FormCreate(Sender: TObject);
 var
-  aLVs: array [1 .. 3] of TListView;
+  aLVs: array [1 .. 4] of TListView;
   LV: TListView;
   i, VT: Integer;
   Arch: string;
   aKV: TGGUFKeyValue;
-
-  KeysArray: TArray<string>;
-  StringList: TStringList;
   SL: TStringList;
 begin
   Caption := 'Edit GGUF KVs';
   FModelA := nil;
   FModelB := nil;
+  FModelC := nil;
   FModelOut := nil;
-  FCurrentTab := 2; // Default to Out
   aLVs[1] := lvKVs1;
   aLVs[2] := lvKVs2;
-  aLVs[3] := lvKVsOut;
+  aLVs[3] := lvKVs3;
+  aLVs[4] := lvKVsOut;
 
   // Configure ListViews
   // for LV in [lvKVs1, lvKVs2, lvKVsOut] do
-  for i := 1 to 3 do
+  for i := 1 to 4 do
   begin
     LV := aLVs[i];
     LV.ViewStyle := vsReport;
@@ -265,31 +326,57 @@ begin
   btnEditStrArray.Enabled := False;
 
   FDiffOutCache := TDictionary<string, Boolean>.Create;
-  FDiffACache := TDictionary<string, Boolean>.Create;
+  FDiffABCache := TDictionary<string, Boolean>.Create;
+  FDiffACCache := TDictionary<string, Boolean>.Create;
   FDiffBCache := TDictionary<string, Boolean>.Create;
+  FDiffCCache := TDictionary<string, Boolean>.Create;
 end;
 
 procedure TfrmEditKVsGGUF.FormDestroy(Sender: TObject);
 begin
-  FDiffOutCache.Free;
-  FDiffACache.Free;
-  FDiffBCache.Free;
+  // Important : on coupe les références AVANT de détruire les caches.
+  // DetachModels est sûr même si les caches ne sont pas encore créés.
+  DetachModels;
+
+  // On évite de laisser un pointeur global fantôme.
+  frmEditKVsGGUF := nil;
+
+  if Assigned(FDiffOutCache) then
+    FreeAndNil(FDiffOutCache);
+  if Assigned(FDiffABCache) then
+    FreeAndNil(FDiffABCache);
+  if Assigned(FDiffACCache) then
+    FreeAndNil(FDiffACCache);
+  if Assigned(FDiffBCache) then
+    FreeAndNil(FDiffBCache);
+  if Assigned(FDiffCCache) then
+    FreeAndNil(FDiffCCache);
+
   inherited;
 end;
 
 procedure TfrmEditKVsGGUF.FormShow(Sender: TObject);
 begin
-  FDiffABCacheDirty := True;
-  FDiffOutCacheDirty := True;
   RefreshAll;
+  ValidateFormBounds(cfg.FrmEditKVsGGUF_Left, cfg.FrmEditKVsGGUF_Top, cfg.FrmEditKVsGGUF_Width,
+    cfg.FrmEditKVsGGUF_Height);
+  Left := cfg.FrmEditKVsGGUF_Left;
+  Top := cfg.FrmEditKVsGGUF_Top;
+  Width := cfg.FrmEditKVsGGUF_Width;
+  Height := cfg.FrmEditKVsGGUF_Height;
+  // WindowState := wsNormal;
 end;
 
 // Méthode pour mettre à jour cbKey basé sur cbKeyFamilly ---
 
 procedure TfrmEditKVsGGUF.RefreshAll;
 begin
+  FDiffABCacheDirty := True;
+  FDiffACCacheDirty := True;
+  FDiffOutCacheDirty := True;
   RebuildList(lvKVs1, FModelA, edtFilter1.Text);
   RebuildList(lvKVs2, FModelB, edtFilter2.Text);
+  RebuildList(lvKVs3, FModelC, edtFilter3.Text);
   RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
   UpdateOutEditors;
 end;
@@ -298,12 +385,13 @@ end;
 procedure TfrmEditKVsGGUF.PageControl1Change(Sender: TObject);
 begin
   if PageControl1.ActivePage = TabSheetModel1 then
-    FCurrentTab := 0
+
   else if PageControl1.ActivePage = TabSheetModel2 then
-    FCurrentTab := 1
+
+  else if PageControl1.ActivePage = TabSheetModel3 then
+
   else if PageControl1.ActivePage = TabSheetModelOut then
   begin
-    FCurrentTab := 2;
     UpdateOutEditors;
   end;
 end;
@@ -314,15 +402,17 @@ begin
     RebuildList(lvKVs1, FModelA, edtFilter1.Text)
   else if PageControl1.ActivePage = TabSheetModel2 then
     RebuildList(lvKVs2, FModelB, edtFilter2.Text)
+  else if PageControl1.ActivePage = TabSheetModel3 then
+    RebuildList(lvKVs3, FModelC, edtFilter3.Text)
   else if PageControl1.ActivePage = TabSheetModelOut then
     RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
 end;
 
 { LOGIQUE METIER }
-procedure TfrmEditKVsGGUF.Log(const S: string);
+procedure TfrmEditKVsGGUF.Log(const S: string; Level: TLogLevel = lvTrace);
 begin
   if Assigned(frmLogs) then
-    LogMsg('EdKVs] ' + S);
+    LogMsg('[EdKVs] ' + S , Level);
   StatusBar1.Panels[0].Text := S;
 end;
 
@@ -337,22 +427,31 @@ begin
     Result := (pos(ssf, LowerCase(Key)) > 0);
 end;
 
-procedure TfrmEditKVsGGUF.RebuildList(AList: TListView; AModel: TGGUFFile; const Filter: string);
+procedure TfrmEditKVsGGUF.RebuildList(AList: TListView; AModel: TGGUFFile; Filter: string);
 var
   i: Integer;
   KV: TGGUFKeyValue;
   It: TListItem;
   k: string;
+  AsStrFull : boolean;
 begin
   if not Assigned(AModel) then
     exit;
 
+  AsStrFull := (Filter = 'AsStrFull');
+  if AsStrFull then
+    Filter := '';
+
+
   // MISE À JOUR DU CACHE DES DIFFÉRENCES (uniquement pour lvKVsOut)
   if (AList = lvKVsOut) and FDiffOutCacheDirty then
-    UpdateDiffABOutCache;
+    UpdateDiffABCOutCache(AsStrFull);
 
   if ((AList = lvKVs1) or (AList = lvKVs2)) and FDiffABCacheDirty then
-    UpdateDiffABCache;
+    UpdateDiffABCache(AsStrFull);
+
+  if ((AList = lvKVs1) or (AList = lvKVs3)) and FDiffACCacheDirty then
+    UpdateDiffACCache(AsStrFull);
 
   AList.Items.BeginUpdate;
   try
@@ -399,13 +498,18 @@ begin
     SrcMod := FModelB;
     SrcLV := lvKVs2;
   end
+  else if ASourceId = 3 then
+  begin
+    SrcMod := FModelC;
+    SrcLV := lvKVs3;
+  end
   else
     exit;
 
   if not Assigned(SrcMod) then
   begin
     // Log('Modèle source non chargé.');
-    Log(mLang.gMsg('FKV.TransferSourceNotLoaded'));
+    Log(mLang.gMsg('FKV.TransferSourceNotLoaded'), lvInfo);
     exit;
   end;
 
@@ -428,7 +532,7 @@ begin
         FModelOut.KVs.Add(KVOut);
     end;
     // Log('Transfer All from Model ' + IntToStr(ASourceId) + ' to Out.');
-    Log(mLang.gMsgFmt('FKV.TransferAllDone', [ASourceId]));
+    Log(mLang.gMsgFmt('FKV.TransferAllDone', [ASourceId]), lvInfo);
   end
   else
   begin
@@ -452,26 +556,10 @@ begin
     if not Found then
       FModelOut.KVs.Add(KVOut);
     // Log('KV "' + string(KVSrc.Key) + '" transferred to Out.');
-    Log(mLang.gMsgFmt('FKV.TransferSelDone', [string(KVSrc.Key)]));
+    Log(mLang.gMsgFmt('FKV.TransferSelDone', [string(KVSrc.Key)]), lvInfo);
   end;
   RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
   UpdateOutEditors;
-end;
-
-procedure TfrmEditKVsGGUF.btnTransferAllClick(Sender: TObject);
-begin
-  if PageControl1.ActivePage = TabSheetModel1 then
-    TransferToOut(1, True)
-  else if PageControl1.ActivePage = TabSheetModel2 then
-    TransferToOut(2, True);
-end;
-
-procedure TfrmEditKVsGGUF.btnTransferSelClick(Sender: TObject);
-begin
-  if PageControl1.ActivePage = TabSheetModel1 then
-    TransferToOut(1, False)
-  else if PageControl1.ActivePage = TabSheetModel2 then
-    TransferToOut(2, False);
 end;
 
 procedure TfrmEditKVsGGUF.lvKVsOutItemChecked(Sender: TObject; Item: TListItem);
@@ -496,6 +584,26 @@ begin
     exit;
   if Sender = lvKVsOut then
     LoadSelectedToEditors(TGGUFKeyValue(Item.Data));
+end;
+
+procedure TfrmEditKVsGGUF.miTransferAllClick(Sender: TObject);
+begin
+  if PageControl1.ActivePage = TabSheetModel1 then
+    TransferToOut(1, True)
+  else if PageControl1.ActivePage = TabSheetModel2 then
+    TransferToOut(2, True)
+  else if PageControl1.ActivePage = TabSheetModel3 then
+    TransferToOut(3, True);
+end;
+
+procedure TfrmEditKVsGGUF.miTransferSelectedClick(Sender: TObject);
+begin
+  if PageControl1.ActivePage = TabSheetModel1 then
+    TransferToOut(1, False)
+  else if PageControl1.ActivePage = TabSheetModel2 then
+    TransferToOut(2, False)
+  else if PageControl1.ActivePage = TabSheetModel3 then
+    TransferToOut(3, False);
 end;
 
 procedure TfrmEditKVsGGUF.LoadSelectedToEditors(KV: TGGUFKeyValue);
@@ -526,7 +634,8 @@ begin
 
   // Désactiver l'édition directe du memo pour les ARRAY et pas les String
   memoValue.ReadOnly := (KV.Val.ValueType = gvt_ARRAY); // or (KV.Val.ValueType = gvt_STRING);
-  btnEditStrArray.Enabled := (KV.Val.ValueType = gvt_ARRAY) or (KV.Val.ValueType = gvt_STRING);
+  btnEditStrArray.Enabled := (KV.Val.ValueType = gvt_ARRAY) or (KV.Val.ValueType = gvt_STRING) or
+    (KV.Key = 'general.file_type');
 end;
 
 procedure TfrmEditKVsGGUF.UpdateOutEditors;
@@ -540,9 +649,46 @@ begin
   end;
 end;
 
+procedure TfrmEditKVsGGUF.btnUpClick(Sender: TObject);
+var
+  Item: TListItem;
+  KV: TGGUFKeyValue;
+  i: Integer;
+begin
+  Item := lvKVsOut.Selected;
+  if (Item = nil) or (Item.Index = 0) or not Assigned(FModelOut) then
+    exit;
+  KV := TGGUFKeyValue(Item.Data);
+  if not Assigned(KV) then
+    exit;
+  // 1. Permutation dans la liste modèle (source de vérité pour l'écriture)
+  FModelOut.KVs.Exchange(Item.Index, Item.Index - 1);
+  // I := Item.Index; J := I - 1;
+  // TGGUFKeyValue(FModelOut.KVs[I]) := TGGUFKeyValue(FModelOut.KVs[J]);
+  // TGGUFKeyValue(FModelOut.KVs[J]) := KV;
+
+  // 2. Rafraîchissement de la ListView
+  RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
+  // 3. Restauration de la sélection sur le même KV
+  for i := 0 to lvKVsOut.Items.Count - 1 do
+  begin
+    if TGGUFKeyValue(lvKVsOut.Items[i].Data) = KV then
+    begin
+      lvKVsOut.Items[i].Selected := True;
+      // 2. On utilise l'API Windows pour forcer le scroll vers cet index
+      // $0122 est la constante Windows pour LVM_ENSUREVISIBLE
+      // SendMessage(lvKVsOut.Handle, $0122, 0, LPARAM(I));
+      lvKVsOut.Items[i].MakeVisible(True);
+      // SendMessage(lvKVsOut.Handle, LVM_ENSUREVISIBLE, lvKVsOut.Items[i].Index, 0);
+
+      Break;
+    end;
+  end;
+end;
+
 procedure TfrmEditKVsGGUF.btnUpsertClick(Sender: TObject);
 var
-  Key: string;
+  Key,sMsg: string;
   KV: TGGUFKeyValue;
 begin
   if not Assigned(FModelOut) then
@@ -552,7 +698,8 @@ begin
   if Key = '' then
   begin
     // MessageDlg('Key vide.', mtWarning, [mbOK], 0);
-    MessageDlg(mLang.gMsg('FKV.KeyEmpty'), mtWarning, [mbOK], 0);
+    sMsg := mLang.gMsg('FKV.KeyEmpty') ;
+    MessageDlg(sMsg, mtWarning, [mbOK], 0);
     exit;
   end;
 
@@ -581,11 +728,15 @@ begin
     FDiffOutCacheDirty := True;
     RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
     // Log('KV upserted/updated.');
-    Log(mLang.gMsg('FKV.UpsertDone'));
+    Log(mLang.gMsg('FKV.UpsertDone'), lvInfo);
   except
     on e: Exception do
       // MessageDlg('Erreur : ' + e.Message, mtError, [mbOK], 0);
-      MessageDlg(mLang.gMsgFmt('FKV.UpsertError', [e.Message]), mtError, [mbOK], 0);
+      begin
+      sMsg := mLang.gMsgFmt('FKV.UpsertError', [e.Message])  ;
+      logI(sMsg);
+      MessageDlg(sMsg, mtError, [mbOK], 0);
+      end;
   end;
 end;
 
@@ -609,77 +760,52 @@ begin
 end;
 
 { Mise à jour du cache des différences }
-procedure TfrmEditKVsGGUF.UpdateDiffABOutCache;
+procedure TfrmEditKVsGGUF.UpdateDiffABCOutCache(AsStrFull : boolean = False); // renommer + declaration private
 var
-  i: Integer;
-  OutKV, AKey, BKey: TGGUFKeyValue;
-  Diff: Boolean;
+  i, n: Integer;
+  OutKV, SrcKV: TGGUFKeyValue;
+  Sources: array [0 .. 2] of TGGUFFile;
+  Found, Same: Boolean;
 begin
   FDiffOutCacheDirty := False;
   FDiffOutCache.Clear;
   if not Assigned(FModelOut) then
     exit;
+  Sources[0] := FModelA;
+  Sources[1] := FModelB;
+  Sources[2] := FModelC;
   for i := 0 to FModelOut.KVs.Count - 1 do
   begin
     OutKV := TGGUFKeyValue(FModelOut.KVs[i]);
-    Diff := False;
-    // 1. Vérifier dans ModelA
-    if Assigned(FModelA) then
+    Found := False;
+    Same := False;
+    for n := 0 to High(Sources) do
     begin
-      AKey := FModelA.FindKV(OutKV.Key);
-      if Assigned(AKey) then
+      if not Assigned(Sources[n]) then
+        Continue;
+      SrcKV := Sources[n].FindKV(OutKV.Key);
+      if not Assigned(SrcKV) then
+        Continue;
+      Found := True;
+      if GGUFValuesEqual(SrcKV.Val, OutKV.Val,AsStrFull) then
       begin
-        if not GGUFValuesEqual(AKey.Val, OutKV.Val) then
-          Diff := True;
-      end
-      else
-      begin
-        // 2. Clé absente de A, vérifier dans ModelB
-        if Assigned(FModelB) then
-        begin
-          BKey := FModelB.FindKV(OutKV.Key);
-          if Assigned(BKey) then
-          begin
-            if not GGUFValuesEqual(BKey.Val, OutKV.Val) then
-              Diff := True;
-          end
-          else
-            Diff := True; // Absente de A et B -> Nouvelle clé
-        end
-        else
-          Diff := True;
+        Same := True;
+        Break;
       end;
-    end
-    else
-    begin
-      // ModelA non chargé, vérifier uniquement dans ModelB
-      if Assigned(FModelB) then
-      begin
-        BKey := FModelB.FindKV(OutKV.Key);
-        if Assigned(BKey) then
-        begin
-          if not GGUFValuesEqual(BKey.Val, OutKV.Val) then
-            Diff := True;
-        end
-        else
-          Diff := True;
-      end
-      else
-        Diff := True;
     end;
-
-    if Diff then
-      FDiffOutCache.Add(string(OutKV.Key), True);
+    if (not Found) or (not Same) then
+      FDiffOutCache.AddOrSetValue(string(OutKV.Key), True);
   end;
 end;
 
-procedure TfrmEditKVsGGUF.UpdateDiffABCache;
+procedure TfrmEditKVsGGUF.UpdateDiffABCache(AsStrFull : boolean = False);
 var
   i: Integer;
   AKey, BKey: TGGUFKeyValue;
   Diff: Boolean;
 begin
-  FDiffACache.Clear;
+  FDiffABCacheDirty := False;
+  FDiffABCache.Clear;
   FDiffBCache.Clear;
   if not Assigned(FModelA) then
     exit;
@@ -694,13 +820,13 @@ begin
     BKey := FModelB.FindKV(AKey.Key);
     if Assigned(BKey) then
     begin
-      if not GGUFValuesEqual(BKey.Val, AKey.Val) then
+      if not GGUFValuesEqual(BKey.Val, AKey.Val,AsStrFull) then
         Diff := True;
     end
     else
       Diff := True;
     if Diff then
-      FDiffACache.Add(string(AKey.Key), True);
+      FDiffABCache.AddOrSetValue(string(AKey.Key), True);
   end;
 
   for i := 0 to FModelB.KVs.Count - 1 do
@@ -711,14 +837,64 @@ begin
     AKey := FModelA.FindKV(BKey.Key);
     if Assigned(AKey) then
     begin
-      if not GGUFValuesEqual(AKey.Val, BKey.Val) then
+      if not GGUFValuesEqual(AKey.Val, BKey.Val,AsStrFull) then
         Diff := True;
     end
     else
       Diff := True;
 
     if Diff then
-      FDiffBCache.Add(string(BKey.Key), True);
+      FDiffBCache.AddOrSetValue(string(BKey.Key), True);
+  end;
+end;
+
+procedure TfrmEditKVsGGUF.UpdateDiffACCache(AsStrFull : boolean = False);
+var
+  i: Integer;
+  AKey, CKey: TGGUFKeyValue;
+  Diff: Boolean;
+begin
+  FDiffACCacheDirty := False;
+  FDiffACCache.Clear;
+  FDiffCCache.Clear;
+  if not Assigned(FModelA) then
+    exit;
+  if not Assigned(FModelC) then
+    exit;
+
+  for i := 0 to FModelA.KVs.Count - 1 do
+  begin
+    AKey := TGGUFKeyValue(FModelA.KVs[i]);
+    Diff := False;
+    // 1. Vérifier dans ModelA
+    CKey := FModelC.FindKV(AKey.Key);
+    if Assigned(CKey) then
+    begin
+      if not GGUFValuesEqual(CKey.Val, AKey.Val,AsStrFull) then
+        Diff := True;
+    end
+    else
+      Diff := True;
+    if Diff then
+      FDiffACCache.AddOrSetValue(string(AKey.Key), True);
+  end;
+
+  for i := 0 to FModelC.KVs.Count - 1 do
+  begin
+    CKey := TGGUFKeyValue(FModelC.KVs[i]);
+    Diff := False;
+    // 1. Vérifier dans ModelA
+    AKey := FModelA.FindKV(CKey.Key);
+    if Assigned(AKey) then
+    begin
+      if not GGUFValuesEqual(AKey.Val, CKey.Val,AsStrFull) then
+        Diff := True;
+    end
+    else
+      Diff := True;
+
+    if Diff then
+      FDiffCCache.AddOrSetValue(string(CKey.Key), True);
   end;
 end;
 
@@ -744,7 +920,9 @@ begin
   KV := TGGUFKeyValue(Item.Data);
 
   // Vérifier si la clé est dans notre cache de différences
-  IsDiff := FDiffACache.ContainsKey(string(KV.Key));
+  IsDiff := FDiffABCache.ContainsKey(string(KV.Key));
+  if not IsDiff then
+    IsDiff := FDiffACCache.ContainsKey(string(KV.Key));
 
   if IsDiff then
   begin
@@ -817,7 +995,48 @@ begin
     Sender.Canvas.Font.Color := clWindowText;
     Sender.Canvas.Font.Style := [];
   end;
+end;
 
+procedure TfrmEditKVsGGUF.lvKVs3CustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
+State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  KV: TGGUFKeyValue;
+  IsDiff: Boolean;
+begin
+  if not Assigned(Item.Data) then
+    exit;
+
+  KV := TGGUFKeyValue(Item.Data);
+
+  // Vérifier si la clé est dans notre cache de différences
+  IsDiff := FDiffCCache.ContainsKey(string(KV.Key));
+
+  if IsDiff then
+  begin
+    Sender.Canvas.Font.Color := clWindowText;
+    Sender.Canvas.Font.Style := [];
+
+    if SubItem = 3 then
+    begin
+      Sender.Canvas.Brush.Color := $00FFF0F0;
+      Sender.Canvas.Font.Color := clRed;
+      Sender.Canvas.Font.Style := [fsBold];
+    end
+    else if Item.Index mod 2 = 0 then
+      Sender.Canvas.Brush.Color := $00F5F5F5
+    else
+      Sender.Canvas.Brush.Color := clWhite;
+  end
+  else
+  begin
+    if Item.Index mod 2 = 0 then
+      Sender.Canvas.Brush.Color := $00F5F5F5
+    else
+      Sender.Canvas.Brush.Color := clWhite;
+
+    Sender.Canvas.Font.Color := clWindowText;
+    Sender.Canvas.Font.Style := [];
+  end;
 end;
 
 procedure TfrmEditKVsGGUF.lvKVsOutAdvancedCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
@@ -874,13 +1093,6 @@ begin
 end;
 
 procedure TfrmEditKVsGGUF.btnAddClick(Sender: TObject);
-var
-  NewKey: AnsiString;
-  NewVal: TGGUFValue;
-  NewKV: TGGUFKeyValue;
-  ExistingKV: TGGUFKeyValue;
-  i: Integer;
-  Overwrite: Boolean;
 begin
   frmEditNewKV.cbKey.Text := '';
   if cbType.ItemIndex >= 0 then
@@ -898,7 +1110,19 @@ var
   ExistingKV: TGGUFKeyValue;
   i: Integer;
   Overwrite: Boolean;
+  sMsg : String;
 begin
+  // Sécurité : si ModelOut n'existe pas, on ne peut rien faire.
+  if not Assigned(FModelOut) then
+  begin
+    if Assigned(NewKV) then
+      NewKV.Free;
+    Exit;
+  end;
+
+  if not Assigned(NewKV) then
+    Exit;
+
   ExistingKV := FModelOut.FindKV(NewKV.Key);
   if Assigned(ExistingKV) then
   begin
@@ -911,7 +1135,7 @@ begin
     begin
       NewKV.Val.Free;
       // Log('Ajout annulé : clé en conflit non écrasée.');
-      Log(mLang.gMsg('FKV.ConflictCancel'));
+      Log(mLang.gMsg('FKV.ConflictCancel'),lvInfo);
       exit;
     end
     else
@@ -919,7 +1143,7 @@ begin
       // FModelOut.KVs.Delete(i);
       FModelOut.KVs.Delete(FModelOut.KVs.IndexOf(ExistingKV));
       // Log('Ancienne clé supprimée pour écrasement, clé :' + string(NewKV.Key));
-      Log(mLang.gMsg('FKV.ConflictOverwrite'));
+      Log(mLang.gMsg('FKV.ConflictOverwrite'),lvInfo);
     end;
   end;
 
@@ -938,12 +1162,14 @@ begin
       end;
     end;
     // Log('Nouvelle clé ajoutée/mise à jour : ' + string(NewKV.Key));
-    Log(mLang.gMsgFmt('FKV.AddUpdatedDone', [string(NewKV.Key)]));
+    Log(mLang.gMsgFmt('FKV.AddUpdatedDone', [string(NewKV.Key)]),lvInfo);
   except
     on e: Exception do
     begin
       // MessageDlg('Erreur lors de l''ajout de la clé : ' + e.Message, mtError, [mbOK], 0);
-      MessageDlg(mLang.gMsgFmt('FKV.AddError', [e.Message]), mtError, [mbOK], 0);
+      sMsg := mLang.gMsgFmt('FKV.AddError', [e.Message]);
+      LogE(sMsg);
+      MessageDlg(sMsg, mtError, [mbOK], 0);
     end;
   end;
 end;
@@ -964,22 +1190,79 @@ begin
   It.Checked := False;
   k := It.SubItems[0];
   // Log('KV "' + k + '" marked for removal.');
-  Log(mLang.gMsgFmt('FKV.RemoveMarked', [k]));
+  Log(mLang.gMsgFmt('FKV.RemoveMarked', [k]),lvInfo);
 end;
 
 procedure TfrmEditKVsGGUF.btnClearFText1Click(Sender: TObject);
 begin
-  edtFilter1.Text := '';
+  if edtFilter1.Text = 'AsStrFull' then
+    edtFilter1.Text := ''
+  else
+  begin
+    FDiffABCacheDirty := True;
+    edtFilter1.Text := 'AsStrFull'
+  end;
 end;
 
 procedure TfrmEditKVsGGUF.btnClearFText2Click(Sender: TObject);
 begin
-  edtFilter2.Text := '';
+  if edtFilter2.Text = 'AsStrFull' then
+    edtFilter2.Text := ''
+  else
+  begin
+    FDiffABCacheDirty := True;
+    edtFilter2.Text := 'AsStrFull'
+  end;
+end;
+
+procedure TfrmEditKVsGGUF.btnClearFText3Click(Sender: TObject);
+begin
+  if edtFilter3.Text = 'AsStrFull' then
+    edtFilter3.Text := ''
+  else
+  begin
+    FDiffACCacheDirty := True;
+    edtFilter3.Text := 'AsStrFull'
+  end;
 end;
 
 procedure TfrmEditKVsGGUF.btnClearFTextOClick(Sender: TObject);
 begin
-  edtFilterOut.Text := '';
+  if edtFilterOut.Text = 'AsStrFull' then
+    edtFilterOut.Text := ''
+  else
+  begin
+    FDiffOutCacheDirty := True;
+    edtFilterOut.Text := 'AsStrFull'
+  end;
+end;
+
+procedure TfrmEditKVsGGUF.btnDownClick(Sender: TObject);
+var
+  Item: TListItem;
+  KV: TGGUFKeyValue;
+  i: Integer;
+begin
+  Item := lvKVsOut.Selected;
+  if (Item = nil) or (Item.Index = lvKVsOut.Items.Count - 1) or not Assigned(FModelOut) then
+    exit;
+  KV := TGGUFKeyValue(Item.Data);
+  if not Assigned(KV) then
+    exit;
+  // 1. Permutation
+  FModelOut.KVs.Exchange(Item.Index, Item.Index + 1);
+  // 2. Rafraîchissement
+  RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
+  // 3. Restauration sélection
+  for i := 0 to lvKVsOut.Items.Count - 1 do
+  begin
+    if TGGUFKeyValue(lvKVsOut.Items[i].Data) = KV then
+    begin
+      lvKVsOut.Items[i].Selected := True;
+      lvKVsOut.Items[i].MakeVisible(True);
+      Break;
+    end;
+  end;
 end;
 
 procedure TfrmEditKVsGGUF.btnEditStrArrayClick(Sender: TObject);
@@ -1006,6 +1289,20 @@ begin
       exit;
     end;
   end;
+
+  if (Key = 'general.file_type') then
+  begin
+    // On appelle le dialogue spécialisé qui gère le remplacement par 'var'
+    if frmEditKVFileTypeDlg.Execute(KV.Val, KV.Key) then
+    begin
+      FDiffOutCacheDirty := True;
+      RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
+      UpdateOutEditors;
+      Log(mLang.gMsgFmt('FKV.KVUpdated', [Key]), lvNotice);
+    end;
+    exit; // On sort pour ne pas exécuter la suite (STRING/ARRAY)
+  end;
+
   if (KV.Val.ValueType <> gvt_STRING) and (KV.Val.ValueType <> gvt_ARRAY) then
   begin
     // MessageDlg('Type non éditable ici.', mtWarning, [mbOK], 0);
@@ -1020,7 +1317,7 @@ begin
       RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
       UpdateOutEditors;
       // Log('KV "' + Key + '" mis à jour avec succès.');
-      Log(mLang.gMsgFmt('FKV.KVUpdated', [Key]));
+      Log(mLang.gMsgFmt('FKV.KVUpdated', [Key]),lvNotice);
       FDiffOutCacheDirty := True;
     end;
   end
@@ -1032,7 +1329,7 @@ begin
       RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
       UpdateOutEditors;
       // Log('KV "' + Key + '" mis à jour avec succès.');
-      Log(mLang.gMsgFmt('FKV.KVUpdated', [Key]));
+      Log(mLang.gMsgFmt('FKV.KVUpdated', [Key]),lvNotice);
       FDiffOutCacheDirty := True;
     end;
   end;
@@ -1084,13 +1381,13 @@ begin
 
           // Appel du writer (MaxBytesPerPart = 0 pour un fichier unique)
           // On passe nil pour OnProgress car on est dans un thread dédié à l'export
-          TGGUFWriter.SaveAs(TempMetaModel, SavePath, 0, True, True, nil, nil);
+          TGGUFWriter.SaveAs(TempMetaModel, SavePath, 0, True, nil, nil);
 
           TThread.Queue(nil,
             procedure
             begin
               // Log('Exportation des métadonnées réussie.');
-              Log(mLang.gMsg('FKV.ExportSuccess'));
+              Log(mLang.gMsg('FKV.ExportSuccess'),lvInfo);
               // MessageDlg('Exportation réussie !', mtInformation, [mbOK], 0);
               MessageDlg(mLang.gMsg('FKV.ExportDoneMsg'), mtInformation, [mbOK], 0);
               ProgressBar1.Visible := False;
@@ -1103,7 +1400,7 @@ begin
               procedure
               begin
                 // Log('Erreur export : ' + e.Message);
-                Log(mLang.gMsgFmt('FKV.ExportError', [e.Message]));
+                Log(mLang.gMsgFmt('FKV.ExportError', [e.Message]),lvWarn);
                 // MessageDlg('Erreur : ' + e.Message, mtError, [mbOK], 0);
                 MessageDlg(mLang.gMsgFmt('FKV.UpsertError', [e.Message]), mtError, [mbOK], 0);
                 ProgressBar1.Visible := False;
@@ -1135,7 +1432,7 @@ var
 begin
   if not Assigned(FModelOut) then
   begin
-    MessageDlg(mLang.gMsg('ModelNotLoaded'), mtWarning, [mbOK], 0);
+    MessageDlg(mLang.gMsg('FKV.ModelNotLoaded'), mtWarning, [mbOK], 0);
     exit;
   end;
 
@@ -1146,7 +1443,7 @@ begin
   ProgressBar1.Position := 0;
   ProgressBar1.Visible := True;
   // Log(mLang.gMsg('LoadingHeader'));
-  Log(mLang.gMsg('FKV.LoadingHeader'));
+  Log(mLang.gMsg('FKV.LoadingHeader'),lvInfo);
 
   TThread.CreateAnonymousThread(
     procedure
@@ -1180,7 +1477,7 @@ begin
                 if TempKVs.Count = 0 then
                 begin
                   // Log('Aucune KV trouvée dans le fichier.');
-                  Log(mLang.gMsg('FKV.ImportNoKV'));
+                  Log(mLang.gMsg('FKV.ImportNoKV'),lvInfo);
                   exit;
                 end;
 
@@ -1215,11 +1512,14 @@ begin
                   end;
                 end;
                 // Log(Format('Importation terminée : %d clés traitées.', [TempKVs.Count]));
-                Log(mLang.gMsgFmt('FKV.ImportDone', [TempKVs.Count]));
+                Log(mLang.gMsgFmt('FKV.ImportDone', [TempKVs.Count]),lvInfo);
               except
                 on e: Exception do
+                begin
                   // MessageDlg('Erreur lors de la fusion : ' + e.Message, mtError, [mbOK], 0);
+                  LogW(mLang.gMsgFmt('FKV.ImportMergeError', [e.Message]));
                   MessageDlg(mLang.gMsgFmt('FKV.ImportMergeError', [e.Message]), mtError, [mbOK], 0);
+                end;
               end;
             end);
 
@@ -1230,6 +1530,7 @@ begin
               procedure
               begin
                 // MessageDlg('Erreur lecture : ' + e.Message, mtError, [mbOK], 0);
+                logW(mLang.gMsgFmt('FKV.ImportReadError', [e.Message]));
                 MessageDlg(mLang.gMsgFmt('FKV.ImportReadError', [e.Message]), mtError, [mbOK], 0);
               end);
           end;
@@ -1245,10 +1546,30 @@ begin
             RebuildList(lvKVsOut, FModelOut, edtFilterOut.Text);
             UpdateOutEditors;
             // Log('Importation terminée.');
-            Log(mLang.gMsg('FKV.ImportDoneFinal'));
+            Log(mLang.gMsg('FKV.ImportDoneFinal'),lvInfo);
           end);
       end;
     end).Start;
+end;
+
+procedure TfrmEditKVsGGUF.btnTransferAll1Click(Sender: TObject);
+begin
+  if PageControl1.ActivePage = TabSheetModel1 then
+    TransferToOut(1, True)
+  else if PageControl1.ActivePage = TabSheetModel2 then
+    TransferToOut(2, True)
+  else if PageControl1.ActivePage = TabSheetModel3 then
+    TransferToOut(3, True);
+end;
+
+procedure TfrmEditKVsGGUF.btnTransferSel1Click(Sender: TObject);
+begin
+  if PageControl1.ActivePage = TabSheetModel1 then
+    TransferToOut(1, False)
+  else if PageControl1.ActivePage = TabSheetModel2 then
+    TransferToOut(2, False)
+  else if PageControl1.ActivePage = TabSheetModel3 then
+    TransferToOut(3, False);
 end;
 
 end.

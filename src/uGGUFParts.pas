@@ -3,7 +3,7 @@
 interface
 
 uses
-  Classes, SysUtils, Contnrs, uBinIO, uGGUFModel, uGGUFTypes, uGGMLTypes;
+  Classes, SysUtils, Contnrs, uBinIO, uGGUFModel, uGGUFTypes, uGGMLTypes, uLog;
 
 type
   TSplitIndex = class
@@ -71,10 +71,13 @@ end;
 // Retourne les fichiers dans l'ordre d'entrée, sans validation
 function BuildAndVerifySplitIndex(const PartFiles: TStringList; out MasterFile: string): TSplitIndex;
 var
-  i: Integer;
+  i, No, Cnt: Integer;
+  M: TGGUFFile;
+  Key: string;
 begin
   Result := TSplitIndex.Create;
   MasterFile := '';
+  LogD('[SPLIT] BuildAndVerifySplitIndex: %d candidate file(s)', [PartFiles.Count]);
   for i := 0 to PartFiles.Count - 1 do
   begin
     if FileExists(PartFiles[i]) then
@@ -82,7 +85,11 @@ begin
       Result.FilesByNo.Values[IntToStr(i)] := PartFiles[i];
       if MasterFile = '' then
         MasterFile := PartFiles[i];
-    end;
+    end
+    else
+      LogW('[SPLIT] part skipped (file not found): %s', [PartFiles[i]]);
+     // LogMsg('[GGUF Parts]  Partie manquante : ' + PartFiles[i])
+      // raise EGGUF.Create('Partie manquante : ' + PartFiles[i]);
   end;
   if MasterFile = '' then
     Result.Count := 0
@@ -91,4 +98,3 @@ begin
 end;
 
 end.
-

@@ -3,8 +3,8 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections,
-  uGGUFModel, uGGUFTypes, uAppConfig, uMath, uLog;
+  System.SysUtils, System.Classes, System.Generics.Collections, System.Contnrs,
+  uGGUFModel, uGGUFTypes, uAppConfig, uMath,uStrUtils, uLog;
 
 type
   TMappingRule = packed record
@@ -48,9 +48,9 @@ function GetTensorPatternName(const Name: string): string;
 
 function GetMappingDir: string;
 function GetAvailableMappedNames: TStringList;
-function GetMappedNamesStrings(sFN: String; out SL: TStringList; out MappingEngine: TMappingEngine): boolean;
+function GetMappedNamesStrings(sFN: String; out MappingEngine: TMappingEngine): boolean;
 
-procedure ApplyMappingToModel(AModel: TGGUFFile; const MappingEngine: TMappingEngine; UseMappedNames: boolean);
+function  ApplyMappingToModel(AModel: TGGUFFile; const MappingEngine: TMappingEngine; UseMappedNames: boolean) : Int64;
 function CalculateAllPatternSizes(M: TGGUFFile): Int64;
 
 // Initialisation centralisée après cfgLoadSettings
@@ -58,7 +58,7 @@ procedure InitializeNamesSystem(var Cfg: TGlobalConfig);
 
 // Instances globales
 var
-  gMapping1, gMapping2, gMappingS: TMappingEngine;
+  gMapping1, gMapping2, gMapping3, gMappingS: TMappingEngine;
   gPatternCache: TPatternCache;
 
   FTensorsLayersPrefixesList: TArray<TPrefixInfo>;
@@ -85,7 +85,7 @@ begin
     Line := AMappings[I];
     EqPos := Pos('=', Line);
     if EqPos = 0 then
-      Continue;
+      Continue; // ligne sans '=' : on ignore (au lieu de '' = whole line)
 
     Pattern := Copy(Line, 1, EqPos - 1);
     Template := Copy(Line, EqPos + 1, MaxInt);
@@ -104,7 +104,7 @@ begin
       Inc(FPatternCount);
     end
     else
-      FDirectMappings.Add(Pattern, Template);
+      FDirectMappings.AddOrSetValue(Pattern, Template);
     // FDirectMappings[Pattern] := Template;
   end;
 end;
@@ -121,14 +121,10 @@ var
   IdxStr, Prefix, Suffix: string;
 begin
   Result := AName;
-  if FPatternCount <= 0 then
-    Exit;
-
   // 1. Dictionnaire direct
   if FDirectMappings.TryGetValue(AName, Result) then
     Exit;
   Result := AName;
-
   // 2. Patterns pré-découpés
   for I := 0 to FPatternCount - 1 do
   begin
@@ -157,23 +153,25 @@ end;
 function GetLayersPrefixList(): TStringList;
 var
   sFN: string;
-  Raw: string;
   SLF: TStringList;
-  sDir, Line: string;
-  I, EqPos: Integer;
+  Line: string;
+  I: Integer;
 begin
   sFN := GetLayersPrefixFN();
 
   SLF := TStringList.Create;
   Result := TStringList.Create;
   try
-    SLF.LoadFromFile(sFN, TEncoding.UTF8);
-    for I := 0 to SLF.Count - 1 do
-    begin
-      Line := SLF[I];
-      if (Line = '') or (Line[1] in ['#', ';']) then
-        Continue;
-      Result.Add(Line);
+    try
+      SLF.LoadFromFile(sFN, TEncoding.UTF8);
+      for I := 0 to SLF.Count - 1 do
+      begin
+        Line := SLF[I];
+        if (Line = '') or (Line[1] in ['#', ';']) then
+          Continue;
+        Result.Add(Line);
+      end;
+    except
     end;
   finally
     SLF.Free;
@@ -197,22 +195,26 @@ end;
 function GetIgnoredPrefixList(): TStringList;
 var
   sFN: string;
-  Raw: string;
   SLF: TStringList;
-  sDir, Line: string;
-  I, EqPos: Integer;
+  Line, sPr: string;
+  I: Integer;
 begin
   sFN := GetIgnoredPrefixFN();
   SLF := TStringList.Create;
   Result := TStringList.Create;
   try
-    SLF.LoadFromFile(sFN, TEncoding.UTF8);
-    for I := 0 to SLF.Count - 1 do
-    begin
-      Line := SLF[I];
-      if (Line = '') or (Line[1] in ['#', ';']) then
-        Continue;
-      Result.Add(Line);
+    try
+      SLF.LoadFromFile(sFN, TEncoding.UTF8);
+      for I := 0 to SLF.Count - 1 do
+      begin
+        Line := Trim(SLF[I]);
+        if (Length(Line) < 3) then
+          Continue;
+        if (Line[1] in ['#', ';']) then
+          Continue;
+        Result.Add(Line);
+      end;
+    except
     end;
   finally
     SLF.Free;
@@ -222,7 +224,10 @@ begin
   SetLength(FIgnoredPrefixesList, Result.Count);
   for I := 0 to Result.Count - 1 do
   begin
-    FIgnoredPrefixesList[FIgnoredPrefixesCount].Prefix := Trim(Result[I]);
+    sPr := Trim(Result[I]);
+    if sPr = '' then
+      Continue;
+    FIgnoredPrefixesList[FIgnoredPrefixesCount].Prefix := sPr;
     if FIgnoredPrefixesList[FIgnoredPrefixesCount].Prefix[1] = '*' then
       FIgnoredPrefixesList[FIgnoredPrefixesCount].PrefixEt :=
         Copy(FIgnoredPrefixesList[FIgnoredPrefixesCount].Prefix, 2)
@@ -335,17 +340,15 @@ begin
     end;
 end;
 
-function GetMappedNamesStrings(sFN: String; out SL: TStringList; out MappingEngine: TMappingEngine): boolean;
+function GetMappedNamesStrings(sFN: String; out MappingEngine: TMappingEngine): boolean;
 var
   SLF: TStringList;
   sDir, Line: string;
   I, EqPos: Integer;
+  SL: TStringList;
 begin
   Result := False;
-  if not Assigned(SL) then
-    SL := TStringList.Create
-  else
-    SL.Clear;
+  SL := TStringList.Create ;
 
   sDir := GetMappingDir;
   sFN := sDir + sFN + '.txt';
@@ -372,7 +375,6 @@ begin
   finally
     SLF.Free;
   end;
-
   FreeAndNil(MappingEngine);
   MappingEngine := TMappingEngine.Create(SL);
 end;
@@ -394,49 +396,73 @@ begin
 
   // 3. Moteurs de Mapping (Libère l'ancien, charge le fichier, crée le nouveau)
   FreeAndNil(gMapping1);
-  GetMappedNamesStrings(Cfg.MappingFile1, Cfg.TensorMappings1, gMapping1);
+  GetMappedNamesStrings(Cfg.MappingFile1, gMapping1);
 
   FreeAndNil(gMapping2);
-  GetMappedNamesStrings(Cfg.MappingFile2, Cfg.TensorMappings2, gMapping2);
+  GetMappedNamesStrings(Cfg.MappingFile2, gMapping2);
+
+  FreeAndNil(gMapping3);
+  GetMappedNamesStrings(Cfg.MappingFile3, gMapping3);
 
   FreeAndNil(gMappingS);
-  GetMappedNamesStrings(Cfg.MappingFileS, Cfg.TensorMappingsS, gMappingS);
+  GetMappedNamesStrings(Cfg.MappingFileS, gMappingS);
 end;
 
 { Application & Calculs }
 
-procedure ApplyMappingToModel(AModel: TGGUFFile; const MappingEngine: TMappingEngine; UseMappedNames: boolean);
+function ApplyMappingToModel(AModel: TGGUFFile; const MappingEngine: TMappingEngine; UseMappedNames: boolean) : Int64;
 var
   I: Integer;
   T: TGGUFTensorInfo;
+  Mapped: String;
+  smName: TGgufStr;
 begin
+  Result := 0;
   if not Assigned(AModel) or not Assigned(MappingEngine) then
     Exit;
-  try
-    for I := 0 to AModel.Tensors.Count - 1 do
-    begin
+  for I := 0 to AModel.Tensors.Count - 1 do
+  begin
+    try
       T := TGGUFTensorInfo(AModel.Tensors[I]);
       if UseMappedNames then
       begin
-        T.NameMap := MappingEngine.MapName(string(T.Name));
-        T.Name := T.NameMap;
-        T.IsNameMapped := T.Name <> T.NameOrg;
+        if T.IsNameMapped  then
+        begin
+          Result := Result + 1;
+          Continue
+        end;
+        Mapped := MappingEngine.MapName(string(T.NameOrg));
+        if (Mapped <> '') and (Mapped <> string(T.NameOrg)) then
+        begin
+          T.Name := U8ToA(Mapped);
+          T.IsNameMapped := True;
+          Result := Result + 1;
+          // le nom a changé -> pattern + couche à recalculer
+          T.TensorPatternName := GetTensorPatternName(string(T.Name));
+          GetLayerPrefixIndx(string(T.Name), T.LayerIndex);
+        end
+        else
+        begin
+          T.Name := T.NameOrg;
+          T.IsNameMapped := False;
+        end;
       end
       else
       begin
         T.Name := T.NameOrg;
         T.IsNameMapped := False;
       end;
+    except
+      on e: Exception do
+      //LogMsg('[MAP] ApplyMappingToModel Exception : ' + E.Message, lvWarn);
+        LogW('[MAP] ApplyMappingToModel aborted after %d tensor(s): %s', [I, E.Message]);
     end;
-  except
-    // Log silencieux pour éviter de casser le chargement en cas d'erreur mineure
-    // OutputDebugString(PChar('[TensorsNamesMan] ApplyMappingToModel: ' + Exception(ExceptObject).Message));
   end;
 end;
 
 function CalculateAllPatternSizes(M: TGGUFFile): Int64;
 var
-  I, SizeIdx: Integer;
+  ii, jj, SizeIdx: Integer;
   T: TGGUFTensorInfo;
   Pattern: string;
   CurrSize: Int64;
@@ -450,9 +476,11 @@ begin
   gPatternCache.Count := 0;
 
   // 1ère passe : construction du cache
-  for I := 0 to M.Tensors.Count - 1 do
+  for ii := 0 to M.Tensors.Count - 1 do
   begin
-    T := TGGUFTensorInfo(M.Tensors[I]);
+    T := TGGUFTensorInfo(M.Tensors[ii]);
+    if not T.Keep then
+      Continue;
     if T.IsConverted then
       CurrSize := T.ByteSize
     else
@@ -461,14 +489,17 @@ begin
     Pattern := T.TensorPatternName;
 
     SizeIdx := -1;
-    for SizeIdx := 0 to gPatternCache.Count - 1 do
+    for jj := 0 to gPatternCache.Count - 1 do
     begin
-      if gPatternCache.Patterns[SizeIdx] = Pattern then
+      if gPatternCache.Patterns[jj] = Pattern then
+      begin
+        SizeIdx := jj;
         Break;
+      end;
     end;
 
     // Si non trouvé, on l'ajoute au cache
-    if (SizeIdx = -1) or (SizeIdx >= gPatternCache.Count) then
+    if (SizeIdx = -1) or (jj >= gPatternCache.Count) then
     begin
       SizeIdx := gPatternCache.Count;
       SetLength(gPatternCache.Patterns, SizeIdx + 1);
@@ -481,21 +512,24 @@ begin
   end;
 
   // 2ème passe : attribution des tailles globales
-  for I := 0 to M.Tensors.Count - 1 do
+  for ii := 0 to M.Tensors.Count - 1 do
   begin
-    T := TGGUFTensorInfo(M.Tensors[I]);
+    T := TGGUFTensorInfo(M.Tensors[ii]);
+    if not T.Keep then
+      Continue;
     Pattern := T.TensorPatternName;
 
     SizeIdx := -1;
-    for SizeIdx := 0 to gPatternCache.Count - 1 do
+    for jj := 0 to gPatternCache.Count - 1 do
     begin
-      if gPatternCache.Patterns[SizeIdx] = Pattern then
+      if gPatternCache.Patterns[jj] = Pattern then
       begin
-        LogMsg(IntToStr(SizeIdx) + ' : ' + T.Name);
+        // LogMsg(IntToStr(jj) + ' : ' + T.Name);
+        SizeIdx := jj;
         Break;
       end;
     end;
-    if SizeIdx <> -1 then
+    if (SizeIdx <> -1) then
       T.PatternGlobalSize := gPatternCache.Sizes[SizeIdx]
     else
       T.PatternGlobalSize := T.ByteSize;
@@ -507,6 +541,7 @@ initialization
 // Initialisation propre : tout est nil. Le vrai chargement se fait via InitializeNamesSystem.
 gMapping1 := nil;
 gMapping2 := nil;
+gMapping3 := nil;
 gMappingS := nil;
 FillChar(gPatternCache, SizeOf(gPatternCache), 0);
 FTensorsLayersPrefixesCount := 0;
@@ -515,6 +550,7 @@ finalization
 
 FreeAndNil(gMapping1);
 FreeAndNil(gMapping2);
+FreeAndNil(gMapping3);
 FreeAndNil(gMappingS);
 SetLength(gPatternCache.Patterns, 0);
 SetLength(gPatternCache.Sizes, 0);

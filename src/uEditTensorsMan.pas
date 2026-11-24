@@ -3,145 +3,45 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, StrUtils, Classes, Controls, Forms, Dialogs, StdCtrls, ComCtrls, ExtCtrls, Graphics,
-  Contnrs, uGGUFModel, uGGUFReader, uGGUFWriter, uGgmlQuants, uGGMLTypes, Generics.Collections, SyncObjs, ShellAPI,
-  VCLTee.TeCanvas, uAppConfig, uSafeTensors, uTensorTranspose, uGgufStrUtils, uGGMLConstants, uLangManager,
-  Vcl.Menus, System.Actions, Vcl.ActnList, uTensorsNamesMan;
+  Windows, Messages, SysUtils, StrUtils, Classes, Controls, System.UITypes,
+  Forms, Dialogs, StdCtrls, ComCtrls, System.Actions, ExtCtrls, Graphics,
+  Contnrs, CommCtrl, Vcl.Menus, Vcl.ActnList, Generics.Collections, SyncObjs,
+  ShellAPI, VCLTee.TeCanvas, uGGUFModel, uGGUFReader, uGGUFWriter, uGgmlQuants,
+  uGGMLTypes, uAppConfig, uSafeTensors, uTensorTranspose, uStrUtils,
+  uGGMLConstants, uLangManager, uTensorsNamesMan,uQuantPresetConfig;
 
 type
   TOnModelUpdate = reference to procedure(const Msg: string);
-
-procedure UpdateMenusLangs;
-
-procedure TranslateForms(ISOCode: string);
 
 function GetActiveTensor: TGGUFTensorInfo;
 
 procedure frmEditTensorsFillDTypes;
 
-procedure frmEditTensorsEnableComboBoxFilter(var FromCombo, ToCombo, ModCombo: TComboBox; e: Boolean);
-
 // Filtrage de couches
 function MatchesLayerFilter(LayerIdx: Integer; const FromCombo, ToCombo, ModCombo: string; AllLayers: Boolean): Boolean;
 
-// Comparateur pour tri des tenseurs par Name
-function CompareTensorsByName(Item1, Item2: Pointer): Integer;
-// Comparateur pour tri des tenseurs par offset
-function CompareTensorByOffset(Item1, Item2: Pointer): Integer;
-
-// Formattage de la forme du tenseur
-function TensorShapeText(T: TGGUFTensorInfo): string;
-
-function frmEditTensorsSelectedTensor: TGGUFTensorInfo;
-
-// Transfère des tenseurs du modèle source vers le modèle de sortie (logique pure)
-procedure UpdateModelFromSource(var OutModel: TGGUFFile; SrcModel: TGGUFFile; TargetName, TargetPattern: string;
-  AllLayers, MatchExact: Boolean; sFrom, sTo, SMod: string; SourceId: Integer);
-
-// Met à jour l'état Keep d'une liste de tenseurs (utile pour synchronisation UI/Données)
-procedure SyncTensorKeepState(List: TObjectList);
-
 procedure frmEditTensorsSyncKeepFromList(OutList: TListView);
-
-procedure frmEditTensorsUpdateRow(It: TListItem; T: TGGUFTensorInfo; GlobalSize: Int64);
 
 procedure TransferSelectedTensorToOut(SourceId: Integer; const FromCombo, ToCombo, ModCombo: TComboBox;
   AllLayers: Boolean);
 
-procedure frmEditTensorsRefreshEditorsForItem(It: TListItem);
+function DoQuantTypeOutChange(SelectedT: TGGUFTensorInfo; NewType, UseImpl, RmseType: Integer; AllLayers: Boolean;
+  FromOut, ToOut, ModOut: string) : Boolean;
 
-procedure frmEditTensorsUpdateOutTensorFromSource(SourceId: Integer; AllLayers: Boolean);
+procedure frmEditTensorsRefreshEditorsForItem(It: TListItem);
 
 procedure frmEditTensorsUpdateTransposeUI(T: TGGUFTensorInfo);
 
 procedure frmEditTensorsDoTransposeActiveTensor;
 procedure frmEditTensorsDoClearTransposeActiveTensor();
 
+// Restaure la sélection sur le même tenseur après un rebuild
+procedure RestoreListViewSelection(AListView: TListView; const SelectedName: String);
+
 implementation
 
-uses uEditTensors, uEditTensorsIO, uViewTensors, uEditKVsGGUF, uSplitMerge, uMappedNamesManager,
+uses uEditTensors, uEditTensorsIO, uEditTensorsView, uViewTensors, uEditKVsGGUF, uMappedNamesManager,
   uGGUFTypes, uEditKVsGGUFNewKey, uEditStringDlg, uEditArrayDlg, uFrmAbout, uAppSetting, uLog;
-
-procedure TranslateForms(ISOCode: string);
-begin
-  cfg.sLang := ISOCode;
-  mLang.SetLanguage(cfg.sLang);
-  mLang.Translate(frmEditTensors);
-  mLang.Translate(frmViewTensors);
-  mLang.Translate(frmEditKVsGGUF);
-  mLang.Translate(frmEditStringDlg);
-  mLang.Translate(frmEditArrayDlg);
-  mLang.Translate(frmEditNewKV);
-  mLang.Translate(frmMappedNamesManager);
-  mLang.Translate(frmSplitMerge);
-  mLang.Translate(frmSettings);
-  mLang.Translate(frmAbout);
-  mLang.Translate(frmLogs);
-
-  // mLang.GenerateFile(frmAbout, 'xx');
-end;
-
-procedure UpdateMenusLangs;
-var
-  I: Integer;
-  MI: TMenuItem;
-  ll: TStrings;
-begin
-  ll := mLang.GetListLangues;
-  try
-    frmEditTensors.MmLangue11.Clear;
-    for I := 0 to ll.Count - 1 do
-    begin
-      MI := TMenuItem.Create(frmEditTensors.MmLangue11);
-      MI.Caption := ll[I]; // Affiche le nom natif (ex: Français, العربية)
-      MI.Tag := I; // Stocke l'index pour retrouver l'ISO code
-      MI.OnClick := frmEditTensors.MenuLangueItemClick;
-      MI.Checked := cfg.sLang = mLang.GetISOCodeByNativeLanguageName(MI.Caption);
-      frmEditTensors.MmLangue11.Add(MI);
-    end;
-    // frmEditTensors.MmLangue1.AutoCheck := true;
-  finally
-    ll.Free;
-  end;
-end;
-
-procedure MenuLangueItemClick(Sender: TObject);
-var
-  sCaption: String;
-  ISOCode: string;
-begin
-  if Sender is TMenuItem then
-  begin
-    sCaption := TMenuItem(Sender).Caption;
-    if Pos('&', sCaption) > 0 then
-      sCaption := StringReplace(sCaption, '&', '', [rfReplaceAll]);
-    ISOCode := mLang.GetISOCodeByNativeLanguageName(sCaption);
-    TranslateForms(ISOCode);
-  end;
-end;
-
-function CompareTensorsByName(Item1, Item2: Pointer): Integer;
-var
-  T1, T2: TGGUFTensorInfo;
-begin
-  T1 := TGGUFTensorInfo(Item1);
-  T2 := TGGUFTensorInfo(Item2);
-  Result := CompareText(string(T1.Name), string(T2.Name));
-end;
-
-function CompareTensorByOffset(Item1, Item2: Pointer): Integer;
-var
-  A, B: TGGUFTensorInfo;
-begin
-  A := TGGUFTensorInfo(Item1);
-  B := TGGUFTensorInfo(Item2);
-  if A.Offset < B.Offset then
-    Result := -1
-  else if A.Offset > B.Offset then
-    Result := 1
-  else
-    Result := 0;
-end;
 
 function GetActiveTensor: TGGUFTensorInfo;
 var
@@ -150,20 +50,20 @@ var
 begin
   Result := nil;
   if not Assigned(frmEditTensors.FCurrentSourceList) then
-    exit;
+    Exit;
 
   // 1. Priorité à l'élément visuellement sélectionné
   if Assigned(frmEditTensors.FCurrentSourceList.Selected) and Assigned(frmEditTensors.FCurrentSourceList.Selected.Data)
   then
   begin
     Result := TGGUFTensorInfo(frmEditTensors.FCurrentSourceList.Selected.Data);
-    exit;
+    Exit;
   end;
 
   // 2. Fallback robuste : recherche par nom dans le ListView actif
   CurName := Trim(frmEditTensors.FCurrentETName.Text);
   if CurName = '' then
-    exit;
+    Exit;
 
   for I := 0 to frmEditTensors.FCurrentSourceList.Items.Count - 1 do
   begin
@@ -176,79 +76,103 @@ begin
   end;
 end;
 
+procedure RestoreListViewSelection(AListView: TListView; const SelectedName: string);
+var
+  I: Integer;
+  Item: TListItem;
+  T: TGGUFTensorInfo;
+  FUpdatingOutList: Boolean;
+begin
+  if not Assigned(AListView) or (SelectedName = '') then
+    Exit;
+  if frmEditTensors.FUpdatingOutList then
+    exit;
+  for I := 0 to AListView.Items.Count - 1 do
+  begin
+    Item := AListView.Items[I]; // Force l'accès (déclenche OnData si virtuel)
+    if Item.Data = nil then
+      Continue;
+    T := TGGUFTensorInfo(Item.Data);
+    if string(T.Name) = SelectedName then
+    begin
+      FUpdatingOutList := frmEditTensors.FUpdatingOutList;
+      frmEditTensors.FUpdatingOutList := True;
+      AListView.Selected := Item;
+      Item.MakeVisible(true);
+      // SendMessage(AListView.Handle, LVM_ENSUREVISIBLE, Item.Index, 0);
+      // SendMessage(hwndLV, LVM_ENSUREVISIBLE, I, MakeLong(Word(fPartialOK), 0));
+      // AListView.SetFocus;
+      AListView.Invalidate;
+      frmEditTensors.FUpdatingOutList := FUpdatingOutList;
+      Exit;
+    end;
+  end;
+end;
+
 procedure frmEditTensorsFillDTypes;
 var
   I: Integer;
   MI: TMenuItem;
   ll: TStrings;
 begin
-  frmEditTensors.cbDType1.Items.Clear;
-  for I := 0 to GGMLTypeCount() do
-    frmEditTensors.cbDType1.Items.Add(GGMLTypeToStr(I));
-  frmEditTensors.cbDType1.ItemIndex := 0;
-  frmEditTensors.cbDType2.Items.Clear;
-  for I := 0 to GGMLTypeCount() do
-    frmEditTensors.cbDType2.Items.Add(GGMLTypeToStr(I));
-  frmEditTensors.cbDType2.ItemIndex := 0;
+  ll := GGMLTypeGetListAllDType;
+  try
+    frmEditTensors.cbDType1.Items.Clear;
+
+    frmEditTensors.cbDType1.Items.AddStrings(ll);
+    frmEditTensors.cbDType1.ItemIndex := 0;
+
+    frmEditTensors.cbDType2.Items.Clear;
+
+    frmEditTensors.cbDType2.Items.AddStrings(ll);
+    frmEditTensors.cbDType2.ItemIndex := 0;
+
+    frmEditTensors.cbDType3.Items.Clear;
+    frmEditTensors.cbDType3.Items.AddStrings(ll);
+    frmEditTensors.cbDType3.ItemIndex := 0;
+  finally
+    ll.Free;
+  end;
   frmEditTensors.cbDTypeOut.Items.Clear;
-  for I := 0 to GGMLTypeCount() do
-    if Assigned(GetQuantProc(I)) then // and Assigned(GetDequantProc(I))
-      frmEditTensors.cbDTypeOut.Items.Add(GGMLTypeToStr(I));
-  frmEditTensors.cbDTypeOut.ItemIndex := 0;
+  // frmViewTensors.cbDTypeOut.Items.Clear;
+
+
+  ll := GGMLTypeGetListDType;
+  try
+    frmEditTensors.cbDTypeOut.Items.AddStrings(ll);
+    frmEditTensors.cbDTypeOut.ItemIndex := 0;
+  // frmViewTensors.cbDTypeOut.ItemIndex := 0;
+  finally
+    ll.Free;
+  end;
 
   frmEditTensors.mnuQuant.Clear;
   for I := 0 to frmEditTensors.cbDTypeOut.Items.Count - 1 do
   begin
     MI := TMenuItem.Create(frmEditTensors.mnuQuant);
-    MI.Caption := frmEditTensors.cbDTypeOut.Items[I]; // Affiche le nom natif (ex: Français, العربية)
-    MI.Tag := I; // Stocke l'index pour retrouver l'ISO code
+    MI.Caption := frmEditTensors.cbDTypeOut.Items[I];
+    MI.Tag := I;
     MI.OnClick := frmEditTensors.MenuQuantClick;
-    // MI.Checked := cfg.sLang = mLang.GetISOCodeByNativeLanguageName(MI.Caption);
     frmEditTensors.mnuQuant.Add(MI);
   end;
   // frmEditTensors.MmLangue1.AutoCheck := true;
 end;
 
-// Calcul de la taille globale du modèle
-function CalculateGlobalSizeOld(M: TGGUFFile): Int64;
-var
-  I: Integer;
-  T: TGGUFTensorInfo;
-begin
-  Result := 0;
-  if not Assigned(M) then
-    exit;
-  for I := 0 to M.Tensors.Count - 1 do
-  begin
-    T := TGGUFTensorInfo(M.Tensors[I]);
-    if T.IsConverted then
-      Result := Result + T.ByteSize
-    else
-      Result := Result + T.ByteSizeOrg;
-  end;
-end;
-
-procedure frmEditTensorsEnableComboBoxFilter(var FromCombo, ToCombo, ModCombo: TComboBox; e: Boolean);
-begin
-  FromCombo.Enabled := e;
-  ToCombo.Enabled := e;
-  ModCombo.Enabled := e;
-end;
 
 function MatchesLayerFilter(LayerIdx: Integer; const FromCombo, ToCombo, ModCombo: String; AllLayers: Boolean): Boolean;
 var
   SMod, sFrom, sTo: string;
-  IFrom, ITo, IMod: Integer;
+  IFrom, ITo, IMod,R,P: Integer;
 begin
-  Result := true;
+ // Result := true;
   // Si AllLayers est False, cette fonction ne doit pas être appelée pour filtrer.
   // On retourne True par sécurité, mais la logique principale gérera le switch.
   if not AllLayers then
-    exit(true);
+    Exit(true);
 
   // Les tenseurs sans couche (bias, embedding, norm) passent automatiquement.
   if LayerIdx < 0 then
-    exit(true);
+    Exit(true);
 
   // 1. Filtre par Mode (All, Odd, Even, ModN, ou nombre exact)
   SMod := UpperCase(Trim(ModCombo));
@@ -257,25 +181,32 @@ begin
     if SMod = 'ODD' then
     begin
       if LayerIdx mod 2 = 0 then
-        exit(False);
+        Exit(False);
     end
     else if SMod = 'EVEN' then
     begin
       if LayerIdx mod 2 <> 0 then
-        exit(False);
+        Exit(False);
     end
     else if Copy(SMod, 1, 3) = 'MOD' then
     begin
-      // Ex: "Mod3" -> extrait 3
+      {// Ex: "Mod3" -> extrait 3
       IMod := StrToIntDef(Copy(SMod, 4, Length(SMod) - 3), 0);
       if (IMod > 0) and (LayerIdx mod IMod <> 0) then
-        exit(False);
+        Exit(False);    }
+      R := 0;
+      P := Pos('+', SMod);
+      if P > 0 then
+        R := StrToIntDef(Copy(SMod, P + 1, MaxInt), 0);
+      IMod := StrToIntDef(Copy(SMod, 4, P - 4), 0);
+      if (IMod > 0) and (((LayerIdx - R) mod IMod) <> 0) then
+        Exit(False);
     end
     else
     begin
       // Cas numérique direct (ex: le combo contient "0", "5", etc.)
       if LayerIdx <> StrToIntDef(SMod, -1) then
-        exit(False);
+        Exit(False);
     end;
   end;
 
@@ -288,97 +219,10 @@ begin
     IFrom := StrToIntDef(sFrom, 0);
     ITo := StrToIntDef(sTo, 999999);
     if (LayerIdx < IFrom) or (LayerIdx > ITo) then
-      exit(False);
+      Exit(False);
   end;
 
-  exit(true);
-end;
-
-function TensorShapeText(T: TGGUFTensorInfo): string;
-var
-  I: Integer;
-begin
-  Result := '';
-  for I := 0 to Length(T.Dims) - 1 do
-  begin
-    if I > 0 then
-      Result := Result + 'x';
-    Result := Result + IntToStr(Integer(T.Dims[I]));
-  end;
-end;
-
-function frmEditTensorsSelectedTensor: TGGUFTensorInfo;
-begin
-  Result := nil;
-  if Assigned(frmEditTensors.FCurrentSourceList.Selected) then
-    Result := TGGUFTensorInfo(frmEditTensors.FCurrentSourceList.Selected.Data);
-end;
-
-procedure UpdateModelFromSource(var OutModel: TGGUFFile; SrcModel: TGGUFFile; TargetName, TargetPattern: string;
-  AllLayers, MatchExact: Boolean; sFrom, sTo, SMod: string; SourceId: Integer);
-var
-  I, J: Integer;
-  TCurrent, CloneT: TGGUFTensorInfo;
-  MatchPattern, MatchLayers, Found: Boolean;
-  CurSMod, CurSFrom, CurSTo: string;
-begin
-  if not Assigned(SrcModel) or not Assigned(OutModel) then
-    exit;
-
-  for I := 0 to SrcModel.Tensors.Count - 1 do
-  begin
-    TCurrent := TGGUFTensorInfo(SrcModel.Tensors[I]);
-    MatchPattern := False;
-    MatchLayers := False;
-
-    if AllLayers then
-      MatchPattern := SameText(GetTensorPatternName(string(TCurrent.Name)), TargetPattern)
-    else
-      MatchPattern := SameText(string(TCurrent.Name), TargetName);
-
-    if not MatchPattern then
-      Continue;
-
-    if AllLayers then
-      MatchLayers := MatchesLayerFilter(TCurrent.LayerIndex, SMod, sFrom, sTo, true)
-    else
-      MatchLayers := true;
-
-    if MatchLayers then
-    begin
-      CloneT := TCurrent.Clone;
-      CloneT.SourceId := SourceId;
-      CloneT.Keep := true;
-
-      Found := False;
-      for J := 0 to OutModel.Tensors.Count - 1 do
-      begin
-        if SameText(string(TGGUFTensorInfo(OutModel.Tensors[J]).Name), string(TCurrent.Name)) then
-        begin
-          OutModel.Tensors[J] := CloneT;
-          Found := true;
-          Break;
-        end;
-      end;
-      if not Found then
-        OutModel.Tensors.Add(CloneT);
-    end;
-  end;
-  CalculateAllPatternSizes(OutModel);
-end;
-
-procedure SyncTensorKeepState(List: TObjectList);
-var
-  I: Integer;
-  T: TGGUFTensorInfo;
-begin
-  if not Assigned(List) then
-    exit;
-  for I := 0 to List.Count - 1 do
-  begin
-    T := TGGUFTensorInfo(List[I]);
-    T.Keep := T.Keep; // Placeholder: UI sync is handled externally
-  end;
+  Exit(true);
 end;
 
 procedure frmEditTensorsSyncKeepFromList(OutList: TListView);
@@ -388,7 +232,7 @@ var
   T: TGGUFTensorInfo;
 begin
   if not Assigned(OutList) then
-    exit;
+    Exit;
   for I := 0 to OutList.Items.Count - 1 do
   begin
     It := OutList.Items[I];
@@ -401,101 +245,50 @@ begin
   end;
 end;
 
-procedure frmEditTensorsUpdateRow(It: TListItem; T: TGGUFTensorInfo; GlobalSize: Int64);
-
-var
-  SizeP: Double;
-  DisplaySize: Int64;
-  DTypeStr: string;
-  DisplayName: string;
-begin
-  It.SubItems.Clear;
-  DTypeStr := GGMLTypeToStr(T.TensorType);
-  It.SubItems.Add(DTypeStr);
-  It.SubItems.Add(TensorShapeText(T));
-  if T.LayerIndex >= 0 then
-    It.SubItems.Add(IntToStr(T.LayerIndex))
-  else
-    It.SubItems.Add('-');
-  if T.IsConverted then
-    DisplaySize := T.ByteSize
-  else
-    DisplaySize := T.ByteSizeOrg;
-  It.SubItems.Add(FormatBytes(DisplaySize));
-  if GlobalSize > 0 then
-  begin
-    SizeP := (DisplaySize / GlobalSize) * 100;
-    It.SubItems.Add(Format('%.2f%%', [SizeP]));
-  end
-  else
-    It.SubItems.Add('0.00%');
-
-  if T.LayerIndex >= 0 then
-  begin
-    It.SubItems.Add(FormatBytes(T.PatternGlobalSize));
-    if GlobalSize > 0 then
-    begin
-      SizeP := (T.PatternGlobalSize / GlobalSize) * 100;
-      It.SubItems.Add(Format('%.2f%%', [SizeP]));
-    end
-    else
-      It.SubItems.Add('0.00%');
-  end
-  else
-  begin
-    It.SubItems.Add('-');
-    It.SubItems.Add('-');
-  end;
-
-  It.SubItems.Add(IntToStr(T.Offset));
-  It.SubItems.Add(IntToStr(T.SourceId));
-  It.SubItems.Add(GGMLTypeToStr(T.TensorTypeOrg));
-end;
-
 // Procédure centralisée pour transférer un tenseur sélectionné vers la sortie
 procedure TransferSelectedTensorToOut(SourceId: Integer; const FromCombo, ToCombo, ModCombo: TComboBox;
   AllLayers: Boolean);
 var
   SrcMod: TGGUFFile;
-  SrcLV: TListView;
   TSrc, TCurrent: TGGUFTensorInfo;
   I, J: Integer;
-  TargetPattern, TargetName, CurrentName: string;
+  TargetPattern, TargetName: string;
   Found: Boolean;
   CloneT: TGGUFTensorInfo;
   MatchPattern, MatchLayers: Boolean;
 begin
-  if SourceId = 1 then
+  if SourceId = SRC_MODEL1 then
   begin
     SrcMod := frmEditTensors.FModelInp1;
-    SrcLV := frmEditTensors.lvTensors1;
   end
-  else if SourceId = 2 then
+  else if SourceId = SRC_MODEL2 then
   begin
     SrcMod := frmEditTensors.FModelInp2;
-    SrcLV := frmEditTensors.lvTensors2;
   end
-  else if SourceId = 3 then
+  else if SourceId = SRC_MODEL3 then
+  begin
+    SrcMod := frmEditTensors.FModelInp3;
+  end
+  else if SourceId = SRC_MODELS then
   begin
     SrcMod := frmEditTensors.FModelInpS;
-    SrcLV := frmEditTensors.lvTensorsS;
   end
   else
-    exit;
+    Exit;
   if not Assigned(SrcMod) then
-    exit;
+    Exit;
 
   TSrc := GetActiveTensor;
   if not Assigned(TSrc) then
-    exit;
+    Exit;
 
   TargetName := string(TSrc.Name);
   TargetPattern := GetTensorPatternName(TargetName);
 
   for I := 0 to SrcMod.Tensors.Count - 1 do
   begin
-    MatchPattern := False;
-    MatchLayers := False;
+   // MatchPattern := False;
+   //  MatchLayers := False;
     TCurrent := TGGUFTensorInfo(SrcMod.Tensors[I]);
 
     // LOGIQUE SWITCH
@@ -538,8 +331,167 @@ begin
   end;
   CalculateAllPatternSizes(frmEditTensors.FModelOut);
   frmEditTensorsRebuildViewOut;
+
+  //frmViewTensors.FSelectionOrder.Clear;
+  //frmViewTensors.ChListBoxTensors.Items.Clear;
+  frmViewTensors.PubPopulateTensorList;
   // eLogMsg(Format('Tenseur(s) "%s" transféré(s) vers Model Out.', [TargetName]));
   eLogMsg(mLang.gMsgFmt('FTE.TensorTransferred', [TargetName]));
+end;
+
+procedure UpdatefrmViewTensorsChListBoxTensorsName(SelectedT: TGGUFTensorInfo);
+var
+  i, j, TargetType: Integer;
+  T: TGGUFTensorInfo;
+  Found: Boolean;
+begin
+  for i := 0 to frmViewTensors.ChListBoxTensors.Items.Count - 1 do
+  begin
+    T := TGGUFTensorInfo(frmViewTensors.ChListBoxTensors.Items.Objects[i]);
+    if T = SelectedT then
+    begin
+      frmViewTensors.ChListBoxTensors.Items[i] := GetFormatTensorNameList(T);
+      if frmViewTensors.FSelOutTensor = SelectedT then
+      begin
+        frmViewTensors.UpdateRmseControlsState;
+        {TargetType := SelectedT.TensorType;
+        Found := False;
+        for j := 0 to frmViewTensors.cbDTypeOut.Items.Count - 1 do
+          if SameText(frmViewTensors.cbDTypeOut.Items[j], GGMLTypeToStr(TargetType)) then
+          begin
+            QP_SetComboSel(frmViewTensors.cbDTypeOut, j);
+            Found := True;
+            Break;
+          end;
+        if not Found then
+          QP_SetComboSel(frmViewTensors.cbDTypeOut, 0);  }
+      end;
+      Break;
+    end;
+  end;
+end;
+
+function DoQuantTypeOutChange(SelectedT: TGGUFTensorInfo; NewType, UseImpl, RmseType: Integer; AllLayers: Boolean;
+  FromOut, ToOut, ModOut: string) : Boolean;
+var
+  i, j, TargetType: Integer;
+  Found: Boolean;
+  Cols, QK: Int64;
+  bIsQuant: Boolean;
+  T: TGGUFTensorInfo;
+  TargetPattern, CurrentPattern, strErr: string;
+  MatchPattern, MatchLayers: Boolean;
+begin
+  Result := False;
+  if not Assigned(SelectedT) then
+    Exit();
+  if NewType < 0 then
+    Exit;
+
+  bIsQuant := GGML_TypeIsQuant(NewType);
+  QK := 1;
+  if bIsQuant then
+  begin
+    if Length(SelectedT.Dims) = 0 then
+    begin
+      eLogMsg(mLang.gMsgFmt('FTE.UnsupportedBlock', [SelectedT.Name, 0]), -1, -1, lvWarn);
+      Exit(False);
+    end;
+    Cols := SelectedT.Dims[0];
+    QK := GGML_BlockElems(NewType);
+    if Cols mod QK <> 0 then
+    begin
+      strErr := mLang.gMsgFmt('FTE.UnsupportedBlock', [SelectedT.Name, SelectedT.Cols]);
+      eLogMsg(strErr, -1, -1, lvWarn);
+      //raise Exception.Create(strErr);
+      Exit(False);
+    end;
+  end;
+    frmViewTensors.ChListBoxTensors.Items.BeginUpdate;
+  try
+  if (UseImpl < QP_USEIMPL_DLL_REF) or (UseImpl > QP_USEIMPL_PAS_IMPL5) then
+    UseImpl := QP_USEIMPL_DLL_IMPL0;
+  if (RmseType < 0) or (RmseType > 4) then
+    RmseType := 2;
+  // eLogMsg('Application du type DType (conversion différée)...');
+  eLogMsg(mLang.gMsg('FTE.DTypeConversionApplied'));
+  Result := True;
+
+  TargetPattern := GetTensorPatternName(string(SelectedT.Name));
+
+  // for I := 0 to frmEditTensors.lvTensorsOut.Items.Count - 1 do
+  // begin T := TGGUFTensorInfo(frmEditTensors.lvTensorsOut.Items[I].Data);
+  for I := 0 to frmEditTensors.FModelOut.Tensors.Count - 1 do
+  begin
+    T := TGGUFTensorInfo(frmEditTensors.FModelOut.Tensors[I]);
+    if not Assigned(T) then Continue;
+    CurrentPattern := GetTensorPatternName(string(T.Name));
+  //  MatchPattern := False;
+    MatchLayers := False;
+
+    // if chkAllLayersOut.Checked then
+    if AllLayers then
+
+    begin
+      MatchPattern := SameText(CurrentPattern, TargetPattern);
+      if MatchPattern then
+        // MatchLayers := MatchesLayerFilter(T.LayerIndex, cbLayersFromOut.Text, cbLayersToOut.Text, cbLayersModOut.Text, true);
+        MatchLayers := MatchesLayerFilter(T.LayerIndex, FromOut, ToOut, ModOut, true);
+    end
+    else
+    begin
+      MatchPattern := (T = SelectedT);
+      MatchLayers := true;
+    end;
+
+    if MatchPattern and MatchLayers then
+    begin
+      if bIsQuant then
+      begin
+        if Length(T.Dims) = 0 then
+          Continue;
+        Cols := T.Dims[0];
+        if Cols mod QK <> 0 then
+        begin
+          eLogMsg(String(T.Name) + ' : unsupported block size for ' + GGMLTypeToStr(NewType), -1, -1, lvWarn);
+          Continue
+          // raise Exception.Create('GGML_RowSize: unsupported block size for ' + GGMLTypeToStr(NewType));
+        end;
+      end;
+      T.TensorType := NewType;
+      T.IsConverted := true;
+      T.UseImpl := UseImpl; // cfg.UseImpl;
+      T.RmseType := RmseType; // cfg.RmseType;
+      T.ByteSize := GGML_TensorDataSize(NewType, T.Dims);
+      UpdatefrmViewTensorsChListBoxTensorsName(T);
+      // T.ByteSizeOrg := T.ByteSize1; Attension pas ici
+      // eLogMsg(Format('Marqué conversion : %s -> %s', [string(T.Name), GGMLTypeToStr(NewType)]));
+      eLogMsg(mLang.gMsgFmt('FTE.ConversionMarked', [string(T.Name), GGMLTypeToStr(NewType)]));
+    end;
+  end;
+  finally
+    frmViewTensors.ChListBoxTensors.Items.EndUpdate;
+  end;
+  frmEditTensorsRebuildViewOut;
+  RestoreListViewSelection(frmEditTensors.lvTensorsOut, String(SelectedT.Name));
+
+  TargetType := SelectedT.TensorType;
+  Found := False;
+  for j := 0 to frmEditTensors.cbDTypeOut.Items.Count - 1 do
+    if SameText(frmEditTensors.cbDTypeOut.Items[j], GGMLTypeToStr(TargetType)) then
+    begin
+      TCombo_SetSel(frmEditTensors.cbDTypeOut, j);
+      Found := True;
+      Break;
+    end;
+  if not Found then
+    TCombo_SetSel(frmEditTensors.cbDTypeOut, 0);
+
+  //if frmViewTensors.FSelOutTensor = SelectedT then
+   // frmViewTensors.UpdateRmseControlsState;
+
+  // LogMsg('Application terminée.');
+  eLogMsg(mLang.gMsg('FTE.ApplicationFinished'));
 end;
 
 procedure frmEditTensorsRefreshEditorsForItem(It: TListItem);
@@ -548,10 +500,10 @@ var
   I: Integer;
 begin
   if (It = nil) or (not Assigned(It.Data)) then
-    exit;
+    Exit;
   T := TGGUFTensorInfo(It.Data);
   if not Assigned(T) then
-    exit;
+    Exit;
 
   frmEditTensors.FCurrentETName.Text := string(T.Name);
   frmEditTensors.FCurrentcbDType.ItemIndex := frmEditTensors.FCurrentcbDType.Items.IndexOf(GGMLTypeToStr(T.TensorType));
@@ -564,102 +516,22 @@ begin
 
   if frmEditTensors.FCurrentSourceList = frmEditTensors.lvTensorsOut then
   begin
+    TCombo_SetSel(frmEditTensors.cbRmseType, T.RmseType);
+    TCombo_SetSel(frmEditTensors.cbUseImpl,  T.UseImpl);
+    frmEditTensors.cbRmseType.Enabled :=  QP_HasPreset(T.UseImpl); ;//T.RmseType >=2;
+
     for I := 0 to frmEditTensors.FCurrentcbDType.Items.Count - 1 do
       frmEditTensors.mnuQuant.Items[I].Checked := I = frmEditTensors.FCurrentcbDType.ItemIndex;
   end;
-end;
 
-procedure frmEditTensorsUpdateOutTensorFromSource(SourceId: Integer; AllLayers: Boolean);
-var
-  SrcMod: TGGUFFile;
-  TOut, TSrc: TGGUFTensorInfo;
-  I, J: Integer;
-  Found: Boolean;
-  CloneT: TGGUFTensorInfo;
-  TargetName, TargetPattern: string;
-begin
-  if not Assigned(frmEditTensors.FModelInp1) and not Assigned(frmEditTensors.FModelInp2) then
-    exit;
-
-  if frmEditTensors.cbSrcModelOut1.ItemIndex = 0 then
-    SrcMod := frmEditTensors.FModelInp1
-  else if frmEditTensors.cbSrcModelOut1.ItemIndex = 1 then
-    SrcMod := frmEditTensors.FModelInp2
-  else if frmEditTensors.cbSrcModelOut1.ItemIndex = 2 then
-    SrcMod := frmEditTensors.FModelInpS
-  else
-    exit;
-
-  if not Assigned(SrcMod) then
-    exit;
-
-  // Recherche robuste du tenseur cible dans lvTensorsOut par son nom
-  TargetName := Trim(frmEditTensors.edtNameOut.Text);
-  TOut := nil;
-  for I := 0 to frmEditTensors.lvTensorsOut.Items.Count - 1 do
-  begin
-    if Assigned(frmEditTensors.lvTensorsOut.Items[I].Data) and
-      SameText(string(TGGUFTensorInfo(frmEditTensors.lvTensorsOut.Items[I].Data).Name), TargetName) then
-    begin
-      TOut := TGGUFTensorInfo(frmEditTensors.lvTensorsOut.Items[I].Data);
-      Break;
-    end;
-  end;
-
-  if not Assigned(TOut) then
-  begin
-    // eLogMsg('Aucun tenseur cible valide trouvé dans la liste de sortie.');
-    MessageDlg(mLang.gMsg('FTE.TensorNotFound'), mtError, [mbOK], 0);
-    exit;
-  end;
-
-  // Calcul du pattern pour le mode "AllLayers" (ex: attn_norm.weight)
-  TargetPattern := GetTensorPatternName(TargetName);
-
-  // Parcours du modèle source pour trouver les correspondances
-  for I := 0 to SrcMod.Tensors.Count - 1 do
-  begin
-    TSrc := TGGUFTensorInfo(SrcMod.Tensors[I]);
-    // Correspondance exacte OU (AllLayers + même pattern de suffixe)
-    if (SameText(string(TSrc.Name), TargetName)) or
-    // (AllLayers and SameText(GetTensorPatternName(string(TSrc.Name)), TargetPattern)) then
-      (AllLayers and SameText(string(TSrc.TensorPatternName), TargetPattern)) then
-    begin
-      Found := False;
-      // Vérifier si le tenseur existe déjà dans ModelOut
-      for J := 0 to frmEditTensors.FModelOut.Tensors.Count - 1 do
-      begin
-        if SameText(string(TGGUFTensorInfo(frmEditTensors.FModelOut.Tensors[J]).Name), string(TSrc.Name)) then
-        begin
-          CloneT := TSrc.Clone;
-          CloneT.SourceId := SourceId;
-          CloneT.Keep := true;
-          frmEditTensors.FModelOut.Tensors[J] := CloneT;
-          // TObjectList(True) libère automatiquement l'ancien objet
-          Found := true;
-          Break;
-        end;
-      end;
-
-      if not Found then
-      begin
-        CloneT := TSrc.Clone;
-        CloneT.SourceId := SourceId;
-        CloneT.Keep := true;
-        frmEditTensors.FModelOut.Tensors.Add(CloneT);
-      end;
-      // eLogMsg(Format('Mise à jour du tenseur "%s" depuis le Modèle %d.', [string(TSrc.Name), SourceId]));
-      eLogMsg(mLang.gMsgFmt('FTE.TensorUpdatedFromSource', [string(TSrc.Name), SourceId]));
-    end;
-  end;
-  CalculateAllPatternSizes(frmEditTensors.FModelOut);
-  frmEditTensorsRebuildViewOut;
 end;
 
 procedure frmEditTensorsUpdateTransposeUI(T: TGGUFTensorInfo);
 begin
   // 1. Activer/Désactiver le bouton Transpose selon la sélection
   // T := GetActiveTensor;
+  if (not Assigned(T)) then
+    Exit;
   if Assigned(T) and T.IsSafetensors and (T.NDims = 2) and (T.TotElems > 1) and (not T.IsTransposed) then
     frmEditTensors.btnTranspose.Enabled := true
   else
@@ -675,13 +547,10 @@ var
   TSrc, TCurrent: TGGUFTensorInfo;
   TargetName, TargetPattern: string;
   DoAll, DoOne: Boolean;
-  ProgressStep: Integer;
-  CurProgress: Integer;
-  TempR: Int64;
 begin
   TSrc := GetActiveTensor;
   if not Assigned(TSrc) then
-    exit;
+    Exit;
 
   SrcStreams := TDictionary<string, TFileStream>.Create;
   try
@@ -693,7 +562,7 @@ begin
       // if MessageDlg('Appliquer la transposition à TOUTES les couches correspondant au pattern ?', mtConfirmation,
       // [mbYes, mbNo], 0) <> mrYes then
       if MessageDlg(mLang.gMsg('FTE.ConfirmTransposeAll'), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-        exit;
+        Exit;
     end;
 
     frmEditTensors.ProgressBar1.Visible := true;
@@ -730,17 +599,16 @@ begin
 
       try
         TTransposeEngine.ExecuteTransposition2(TCurrent, SrcStreams[TCurrent.SourceFile], TCurrent.SourceFile,
-          cfg.UseFDLL,
           procedure(AProgress: Integer)
           begin
             frmEditTensors.ProgressBar1.Position := I; // + (AProgress div 100)
             Application.ProcessMessages;
           end);
-        TCurrent.TransposFile := TTransposeEngine.GetModelTmpDir(TCurrent.SourceFile, string(TCurrent.NameOrg));
+        TCurrent.TransposFile := TTransposeEngine.GetModelTmpFileName(TCurrent.SourceFile, string(TCurrent.NameOrg));
         if FileExists(TCurrent.TransposFile) then
         begin
           TTransposeEngine.SetTransposDims(TCurrent);
-          eLogMsg(mLang.gMsgFmt('FTE.TensorTransposed', [string(TCurrent.Name)]));
+          eLogMsg(mLang.gMsgFmt('FTE.TensorTransposed', [string(TCurrent.Name)]), -1, -1, lvNotice);
         end
         else
         begin
@@ -750,7 +618,7 @@ begin
       except
         on e: Exception do
           // eLogMsg('Erreur transposition "' + string(TCurrent.Name) + '": ' + e.Message);
-          eLogMsg(mLang.gMsgFmt('FTE.TranspositionError', [e.Message]));
+          eLogMsg(mLang.gMsgFmt('FTE.TranspositionError', [e.Message]), -1, -1, lvError);
       end;
     end;
     frmEditTensorsRebuildViewS;
@@ -776,7 +644,7 @@ var
   IsPatternMode: Boolean;
 begin
   if not Assigned(frmEditTensors.FModelInpS) then
-    exit;
+    Exit;
 
   TSrc := GetActiveTensor;
   // if not Assigned(TSrc) then  exit;
@@ -785,11 +653,11 @@ begin
   begin
     // MessageDlg('Veuillez sélectionner un tenseur transposé dans la liste.', mtInformation, [mbOK], 0);
     MessageDlg(mLang.gMsg('FTE.SelectTransposedTensor'), mtInformation, [mbOK], 0);
-    exit;
+    Exit;
   end;
 
   if (Not TSrc.IsSafetensors) or (TSrc.NDims <> 2) or (TSrc.TotElems = 0) then
-    exit;
+    Exit;
 
   // Préparation des critères selon le mode d'application
   IsPatternMode := frmEditTensors.chkAllLayersS.Checked;
@@ -808,7 +676,7 @@ begin
   else
     ss2 := ' exact name ?';
   if MessageDlg(mLang.gMsgFmt('FTE.ConfirmClearTranspose', [ss1, ss2]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-    exit;
+    Exit;
 
   // Parcours et suppression ciblée
   for I := 0 to frmEditTensors.FModelInpS.Tensors.Count - 1 do
@@ -831,12 +699,12 @@ begin
         T.TransposFile := '';
         // LogMsg(Format('Fichier temporaire supprimé : %s', [string(T.NameOrg)]));
         // eLogMsg(Format(mLang.gMsg('FTE.TempFileRemoved'), [string(T.NameOrg)]));
-        eLogMsg(mLang.gMsgFmt('FTE.TempFileRemoved', [string(T.NameOrg)]));
+        eLogMsg(mLang.gMsgFmt('FTE.TempFileRemoved', [string(T.NameOrg)]), -1, -1, lvNotice);
       end;
     end
     else
     begin
-      // Mode Exact : comparaison par nom (plus fiable que l'adresse mémoire)
+      // Mode Exact : comparaison par nom
       if SameText(string(T.NameOrg), TargetName) then
       begin
         DeleteFile(T.TransposFile);
@@ -845,12 +713,12 @@ begin
         T.TransposFile := '';
         // LogMsg(Format('Fichier temporaire supprimé : %s', [string(T.NameOrg)]));
         // eLogMsg(Format(mLang.gMsg('FTE.TempFileRemoved'), [string(T.NameOrg)]));
-        eLogMsg(mLang.gMsgFmt('FTE.TempFileRemoved', [string(T.NameOrg)]));
+        eLogMsg(mLang.gMsgFmt('FTE.TempFileRemoved', [string(T.NameOrg)]), -1, -1, lvNotice);
       end;
     end;
   end;
 
-  // Rafraîchissement UI cohérent
+  // Rafraîchissement UI
   frmEditTensorsRebuildViewS;
   frmEditTensorsUpdateTransposeUI(TSrc);
   // LogMsg('Traitement de suppression terminé.');

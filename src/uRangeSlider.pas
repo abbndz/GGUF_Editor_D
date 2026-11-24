@@ -58,6 +58,10 @@ begin
   FMinVal := AMin;
   if FMaxVal < FMinVal then
     FMaxVal := FMinVal;
+  if FStartIdx < FMinVal then
+    FStartIdx := FMinVal;
+  if FEndIdx < FMinVal then
+    FEndIdx := FMinVal;
   Invalidate;
 end;
 
@@ -105,6 +109,10 @@ begin
   else
   begin
     Ratio := APos / ClientWidth;
+    if Ratio < 0 then
+      Ratio := 0;
+    if Ratio > 1 then
+      Ratio := 1;
     Result := FMinVal + Round(Ratio * (FMaxVal - FMinVal));
   end;
 end;
@@ -140,7 +148,7 @@ var
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if FStartIdx = FEndIdx then
-    FEndIdx := FEndIdx + 1;
+    SetEndIdx(FEndIdx + 1); // FEndIdx := FEndIdx + 1;
   RStart := ValueToPos(FStartIdx);
   REnd := ValueToPos(FEndIdx);
   aRStart := Abs(X - RStart);
@@ -162,7 +170,8 @@ begin
   FLastMouseX := X;
   if FMode <> rmNone then
   begin
-    // Capture := True;
+    // Capture := True; // => [dcc64 Erreur] uRangeSlider.pas(173): E2003 Identificateur
+    SetCapture(Handle); // Capture Windows API
     Invalidate;
   end;
 end;
@@ -201,10 +210,15 @@ begin
   // Clamp les valeurs pour respecter les bornes
   if StartIdx < FMinVal then
     StartIdx := FMinVal;
+
   if EndIdx > FMaxVal then
     EndIdx := FMaxVal;
+
   if StartIdx >= EndIdx then
     StartIdx := EndIdx - 1;
+
+  if StartIdx < FMinVal then
+    StartIdx := FMinVal;
 
   Invalidate;
   if Assigned(FOnChange) then
@@ -215,7 +229,9 @@ procedure TRangeSlider.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: I
 begin
   inherited MouseUp(Button, Shift, X, Y);
   FMode := rmNone;
-  // Capture := False;
+  // Capture := False; // => [dcc64 Erreur] uRangeSlider.pas(173): E2003 Identificateur
+  if GetCapture = Handle then
+    ReleaseCapture;   // <<< ne pas voler la capture d'autrui
 end;
 
 end.

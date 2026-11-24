@@ -1,11 +1,9 @@
-unit uBinIO;
+﻿unit uBinIO;
 
 interface
 
 uses
-  Classes, SysUtils
-  // , Winapi.Windows
-    ;
+  Classes, SysUtils;
 
 var
   iUnused: Integer;
@@ -37,7 +35,7 @@ type
     function ReadBoolI8: Boolean;
 
     function ReadBytes(Count: Integer): TBytes;
-    function ReadStringU64: AnsiString;
+    function ReadStringU64: RawByteString;// AnsiString;
 
     property Stream: TStream read FStream;
   end;
@@ -68,9 +66,11 @@ type
     procedure WriteBoolI8(V: Boolean);
 
     procedure WriteBytes(const B: TBytes);
-    procedure WriteStringU64(const S: AnsiString);
+    procedure WriteStringU64(const S: RawByteString);
 
     procedure PadToAlignment(Align: Cardinal; PadByteData: Byte = 0);
+
+    function Position : Int64;
 
     property Stream: TStream read FStream;
   end;
@@ -166,26 +166,32 @@ begin
   Result := (ReadI8 <> 0);
 end;
 
-function TBinReader.ReadStringU64: AnsiString;
+function TBinReader.ReadStringU64: RawByteString ; //AnsiString;
+const
+  MAX_STR = UInt64(64) * 1024 * 1024;
 var
-  L: UInt64;
-  B: TBytes;
+  L, Got: UInt64;
+  // B: TBytes;
 begin
   try
+    Result := '';
     L := ReadU64;
-    if L > UInt64(1024 * 1024 * 64) then // garde-fou simple
-      raise EBinIO.Create('String too large');
-    if L > 0 then
-    begin
-      B := ReadBytes(Integer(L));
-      SetString(Result, PAnsiChar(@B[0]), Length(B));
-    end
-    else
+    if L > MAX_STR then
+      raise EBinIO.CreateFmt('String too large (%u bytes)', [L]);
+    // raise EBinIO.Create('String too large');
+
+    if L = 0 then
     begin
       iUnused := iUnused + 1;
-      Result := ' '; // 'unused' + IntToStr(iUnused);
+      Result := ''; // 'unused' + IntToStr(iUnused);
+      Exit;
     end;
+    SetLength(Result, NativeInt(L));
+    Got := FStream.Read(Result[1], NativeInt(L)); // Read, pas ReadBuffer + test inutile
+    if Got <> L then
+      raise EBinIO.Create('Unexpected EOF while reading string');
   except
+    raise EBinIO.Create('ReadStringU64');
   end;
 end;
 
@@ -282,7 +288,8 @@ begin
     WriteI8(0);
 end;
 
-procedure TBinWriter.WriteStringU64(const S: AnsiString);
+//procedure TBinWriter.WriteStringU64(const S: AnsiString);
+procedure TBinWriter.WriteStringU64(const S: RawByteString);
 begin
   if Length(S) > 0 then
   begin
@@ -291,8 +298,8 @@ begin
   end
   else
   begin
-    WriteU64(UInt64(1));
-    FStream.WriteBuffer(String(' ')[1], 1);
+    WriteU64(1);
+    WriteU8($20);
   end;
 end;
 
@@ -304,12 +311,18 @@ begin
   if Align = 0 then
     Exit;
   PosNow := FStream.Position;
-  Pad := Cardinal((Align - (PosNow mod Align)) mod Align);
+  // Pad := Cardinal((Align - (PosNow mod Align)) mod Align);
+  Pad := Cardinal((Int64(Align) - (PosNow mod Int64(Align))) mod Int64(Align));
   while Pad > 0 do
   begin
     FStream.WriteBuffer(PadByteData, 1);
     Dec(Pad);
   end;
+end;
+
+function TBinWriter.Position: Int64;
+begin
+  result :=  FStream.Position;
 end;
 
 end.

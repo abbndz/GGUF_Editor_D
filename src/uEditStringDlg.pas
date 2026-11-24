@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, Grids, ExtCtrls, RichEdit, System.IOUtils,
-  Vcl.ComCtrls, uGGUFTypes, uGGMLTypes, uMath, Vcl.Menus;
+  System.UITypes, Vcl.ComCtrls, uGGUFTypes, uGGMLTypes, uMath, Vcl.Menus;
 
 type
 
@@ -35,7 +35,7 @@ var
 
 implementation
 
-uses uEditKVsGGUF, uLangManager, uAppConfig;
+uses uEditKVsGGUF, uLangManager, uAppConfig, uStrUtils;
 
 {$R *.dfm}
 
@@ -60,8 +60,6 @@ begin
 end;
 
 procedure TfrmEditStringDlg.LoadPage;
-var
-  i, startIdx, endIdx, Count: Integer;
 begin
   if not Assigned(FValue) then
     Exit;
@@ -81,7 +79,7 @@ begin
     Exit;
   try
     S := TFile.ReadAllText(OpenDialog1.FileName, TEncoding.UTF8);
-    //S := Trim(S);
+    // S := Trim(S);
     if S = '' then
       Exit;
     if Assigned(FValue) then
@@ -89,7 +87,9 @@ begin
     FValue := nil;
     FValue := TGGUFValue.Create;
     FValue.ValueType := gvt_STRING;
-    FValue.VStr := AnsiString(S);
+    // FValue.VStr := AnsiString(S);
+    // FValue.VStr := AnsiString(TEncoding.UTF8.GetString(BytesOf(S)));
+    FValue.VStr := AToU8(S);
     LoadPage;
   except
     on E: Exception do
@@ -108,7 +108,7 @@ begin
   if SaveDialog1.Execute then
   begin
     try
-      TFile.WriteAllText(SaveDialog1.FileName, string(FValue.VStr), TEncoding.UTF8)
+      TFile.WriteAllText(SaveDialog1.FileName, AToU8(FValue.VStr), TEncoding.UTF8)
     except
       on E: Exception do
         // MessageDlg('Erreur de sauvegarde : ' + E.Message, mtError, [mbOK], 0);
@@ -121,7 +121,8 @@ procedure TfrmEditStringDlg.btnStrOKClick(Sender: TObject);
 begin
   if (FValue.ValueType = gvt_STRING) then
   begin
-    FValue.VStr := AnsiString(memoEditor.Text);
+    //FValue.VStr := AnsiString(memoEditor.Text);
+    FValue.VStr := U8ToA(memoEditor.Text);
     ModalResult := mrOk;
   end;
 end;

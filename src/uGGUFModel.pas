@@ -10,31 +10,29 @@ type
 
   TGGUFTensorInfo = class
   private
-
   public
-    Name: AnsiString;
-    NameOrg: AnsiString;
-    NameMap: AnsiString;
+    Name: TGgufStr;
+    NameOrg: TGgufStr;
     IsNameMapped: Boolean;
     NDims: Cardinal;
     TotElems: Int64;
-    Cols, Rows: Cardinal;
+    Cols, Rows: Int64;
     Dims: array of Int64;
     TensorType: Integer; // Type ACTUEL (peut être celui d'origine ou le type cible si marqué)
     IsSafetensors: Boolean;
     TensorTypeOrg: Integer; // Type GGML original
     IsConverted: Boolean; // True si ce tenseur doit être converti lors de l'écriture / Affichage
+    UseImpl, RmseType: Integer;
+
     IsTransposed: Boolean; // Indique que le tenseur est actuellement "patché" par un fichier temporaire
     TransposFile: string; // Chemin du fichier temporaire (ex: ./tmp/tensor_name.bin)
 
     Offset: Int64;
     SourceOffset: Int64;
     TensorDataFilePos: Int64;
-    ByteSize: UInt64;
-    ByteSizeOrg: UInt64; // Taille des données brutes avant toute quantification
-    BlockElems: Integer;
-    BlockBytes: Integer;
-    SourceFile: string; // utile merge multi-sources
+    ByteSize: Int64;
+    ByteSizeOrg: Int64; // Taille des données brutes avant toute quantification
+    SourceFile: string; // multi-sources
     SourceId: Word; // ID source d’origine (1:Inp1 ou 2:Inp2, ...)
 
     LayerCount: Integer; // Ex: 48 , ou 1  si pas de couche
@@ -50,7 +48,7 @@ type
     function GetTotalElements: Int64;
     function GetCols(): Int64;
     function GetRows(): Int64;
-    function CalcSizeByGGML(): UInt64;
+    function CalcSizeByGGML(): Int64;
     function Clone: TGGUFTensorInfo;
 
     class function GetRowSize(VT: Integer; n: Int64): Int64;
@@ -60,9 +58,10 @@ type
   TGGUFFile = class
   public
     Version: Cardinal;
-    KVCount: UInt64;
+    KVCount: Int64;
     Alignment: Cardinal; // general.alignment si présent, sinon 32
     KVs: TObjectList; // TGGUFKeyValue (OwnsObjects=True)
+    // KVs: TObjectList<TGGUFKeyValue>;
     Tensors: TObjectList; // TGGUFTensorInfo
     TensorCount: Int64;
 
@@ -83,7 +82,7 @@ type
     function FindKV(const Key: AnsiString): TGGUFKeyValue;
     function HasKV(const Key: AnsiString): Boolean;
     function KVAsToStringList: TStringList;
-    function CloneVersOnly: TGGUFFile;
+    function CloneVersionOnly: TGGUFFile;
     function CloneMetaOnly: TGGUFFile; // clone KVs + tensor headers (sans toucher aux bytes)
     function Clone: TGGUFFile;
 
@@ -138,12 +137,12 @@ begin
   Result := Cols;
   if Cols <= 0 then
   begin
-    if Integer(NDims) > 0 then
+    if Length(Dims) > 0 then
     begin
-      Cols := Dims[High(Dims)];
+      Cols := Dims[0];
       Rows := 1;
-      if NDims > 1 then
-        for i := 0 to NDims - 2 do
+      if Length(Dims) > 1 then
+        for i := 1 to Length(Dims) - 1 do
           Rows := Rows * Dims[i];
     end
     else
@@ -158,40 +157,20 @@ begin
 end;
 
 function TGGUFTensorInfo.GetRows: Int64;
-var
-  i: Integer;
 begin
-  Result := Rows;
   if Rows <= 0 then
-  begin
-    if Integer(NDims) > 0 then
-    begin
-      Cols := Dims[0];
-      // Cols := Dims[High(Dims)];
-      Rows := 1;
-      for i := 1 to Length(Dims) - 1 do
-        // for i := 0 to NDims - 2 do
-        Rows := Rows * Dims[i];
-    end
-    else
-    begin
-      Rows := 1;
-      Cols := 1;
-      TotElems := 1;
-    end;
-    TotElems := Cols * Rows;
-    Result := Rows;
-  end;
+    GetCols;
+  Result := Rows;
 end;
 
-function TGGUFTensorInfo.CalcSizeByGGML: UInt64;
+function TGGUFTensorInfo.CalcSizeByGGML: Int64;
 begin
   if (TensorType < 0) or (TensorType >= GGMLTypeCount) then
     Exit(0);
   if GGML_TypeIsQuant(TensorType) then
-    Result := GGML_TensorDataSize1(TensorType, Dims)
+    Result := GGML_TensorDataSize(TensorType, Dims)
   else
-    Result := TotElems * GGML_TypeScalarSize(TensorType);
+    Result := TotElems * GGML_BlockBytes(TensorType);
 end;
 
 class function TGGUFTensorInfo.GetRowSize(VT: Integer; n: Int64): Int64;
@@ -201,7 +180,7 @@ end;
 
 class function TGGUFTensorInfo.GetTensorDataSize(VT: Integer; const Shape: array of Int64): Int64;
 begin
-  Result := GGML_TensorDataSize1(VT, Shape);
+  Result := GGML_TensorDataSize(VT, Shape);
 end;
 
 function TGGUFTensorInfo.Clone: TGGUFTensorInfo;
@@ -211,8 +190,8 @@ begin
   Result := TGGUFTensorInfo.Create;
   Result.Name := Name;
   Result.NDims := NDims;
-  SetLength(Result.Dims, NDims);
-  for i := 0 to Integer(NDims) - 1 do
+  SetLength(Result.Dims, Length(Dims));
+  for i := 0 to Length(Dims) - 1 do
     Result.Dims[i] := Dims[i];
   Result.Cols := Cols;
   Result.Rows := Rows;
@@ -221,6 +200,10 @@ begin
   Result.IsSafetensors := IsSafetensors;
   Result.TensorTypeOrg := TensorTypeOrg;
   Result.IsConverted := IsConverted;
+
+  Result.UseImpl := UseImpl;
+  Result.RmseType := RmseType;
+
   Result.Offset := Offset;
   Result.SourceOffset := SourceOffset;
   Result.TensorDataFilePos := TensorDataFilePos;
@@ -231,7 +214,7 @@ begin
   Result.SourceId := SourceId;
 
   Result.NameOrg := NameOrg;
-  Result.NameMap := NameMap;
+  Result.IsNameMapped := IsNameMapped;
   Result.IsTransposed := IsTransposed;
   Result.TransposFile := TransposFile;
 
@@ -326,6 +309,7 @@ begin
   end;
   KV.Val.ValueType := gvt_UINT16;
   KV.Val.VU16 := v;
+  KV.Keep := True;
 end;
 
 procedure TGGUFFile.SetKV_U32(const Key: AnsiString; v: Cardinal);
@@ -343,6 +327,7 @@ begin
   end;
   KV.Val.ValueType := gvt_UINT32;
   KV.Val.VU32 := v;
+  KV.Keep := True;
 end;
 
 procedure TGGUFFile.SetKV_I32(const Key: AnsiString; v: Integer);
@@ -360,6 +345,7 @@ begin
   end;
   KV.Val.ValueType := gvt_INT32;
   KV.Val.VI32 := v;
+  KV.Keep := True;
 end;
 
 procedure TGGUFFile.SetKV_String(const Key: AnsiString; const v: AnsiString);
@@ -375,6 +361,8 @@ begin
     KV.Val := TGGUFValue.Create;
     KVs.Add(KV);
   end;
+  if Assigned(KV.Val) and Assigned(KV.Val.VArr) then
+    FreeAndNil(KV.Val.VArr);
   KV.Val.ValueType := gvt_STRING;
   KV.Val.VStr := v;
   KV.Keep := True;
@@ -483,13 +471,12 @@ begin
   end;
 end;
 
-function TGGUFFile.CloneVersOnly: TGGUFFile;
-var
-  i: Integer;
+function TGGUFFile.CloneVersionOnly: TGGUFFile;
 begin
   Result := TGGUFFile.Create;
   Result.Version := Version;
   Result.Alignment := Alignment;
+  Result.InitHeaderPartSizeBytes := 64;
 end;
 
 function TGGUFFile.CloneMetaOnly: TGGUFFile;
@@ -499,6 +486,7 @@ begin
   Result := TGGUFFile.Create;
   Result.Version := Version;
   Result.Alignment := Alignment;
+  Result.InitHeaderPartSizeBytes := InitHeaderPartSizeBytes;
   for i := 0 to KVs.Count - 1 do
     if not KVShouldIgnoreInMerge(string(TGGUFKeyValue(KVs[i]).Key)) then
       Result.KVs.Add(TGGUFKeyValue(KVs[i]).Clone);
@@ -514,6 +502,7 @@ begin
   Result.TensorDataFilePos := TensorDataFilePos;
   Result.TensorDataSizeBytes := TensorDataSizeBytes;
   Result.FileDataSizeBytes := FileDataSizeBytes;
+  Result.InitHeaderPartSizeBytes := InitHeaderPartSizeBytes;
 
   for i := 0 to KVs.Count - 1 do
     if not KVShouldIgnoreInMerge(string(TGGUFKeyValue(KVs[i]).Key)) then
@@ -523,3 +512,4 @@ begin
 end;
 
 end.
+

@@ -3,8 +3,9 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, StdCtrls, ExtCtrls,
-  uGGUFWriter, uAppConfig, uGGUFModel, ComCtrls, uLangManager;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, ComCtrls, System.UITypes, uGGUFWriter, uAppConfig,
+  uGGUFModel, uLangManager, uSaveProgress, uLog, uStrUtils;
 
 type
   TfrmSplitMerge = class(TForm)
@@ -43,9 +44,20 @@ type
     procedure btnMergeClick(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
   private
+    FBusy: Boolean;
+
     function CollectPartFiles: TStringList;
-    procedure SplitProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64);
-    procedure MergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64);
+    procedure SetBusy(B: Boolean);
+
+    // Version "thread-safe" : appelée depuis le worker, elle poste sur la VCL
+    procedure SplitProgress(const Info: TProgressInfo);
+    procedure MergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64; Level: TLogLevel = lvTrace);
+
+    // Version "UI" : exécutée dans le thread principal
+    procedure ApplySplitProgress(const Info: TProgressInfo);
+    procedure ApplyMergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64; Level: TLogLevel = lvTrace);
+
+    procedure LogProgress(const S: string; Level: TLogLevel = lvTrace);
   public
   end;
 
@@ -56,23 +68,24 @@ var
 
 implementation
 
-uses uGGUFReader, uGGUFParts, uLog;
+uses
+  Math,
+  uGGUFReader, uGGUFParts;
 
 {$R *.dfm}
 
 procedure smLogMsg(const S: string);
 begin
+  LogMsg('[SplitMerge] ' + S);
+  if not Assigned(frmSplitMerge) then
+    Exit;
   TThread.Queue(nil,
     procedure
     begin
+      if not Assigned(frmSplitMerge) then
+        Exit;
       frmSplitMerge.StatusBar1.Panels[0].Text := S;
     end);
-
-  // Logging fichier/debug
-  if Assigned(frmLogs) then
-    LogMsg('[SplitMerge]  ' + S)
-  else
-    OutputDebugString(PChar('[SplitMerge]  ' + S));
 end;
 
 procedure TfrmSplitMerge.FormCreate(Sender: TObject);
@@ -84,52 +97,179 @@ begin
   OpenDialogParts.Options := OpenDialogParts.Options + [ofAllowMultiSelect];
 
   SaveDialog1.Filter := 'GGUF (*.gguf)|*.gguf|All (*.*)|*.*';
+
+  ProgressBar1.Min := 0;
+  ProgressBar1.Max := 100;
+  ProgressBar1.Position := 0;
+
+  ProgressBar2.Min := 0;
+  ProgressBar2.Max := 100;
+  ProgressBar2.Position := 0;
+
+  FBusy := false;
+
+  SetBusy(false);
 end;
 
-procedure TfrmSplitMerge.SplitProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64);
+procedure TfrmSplitMerge.SetBusy(B: Boolean);
 begin
+  FBusy := B;
+
+  btnSplit.Enabled := not B;
+  btnMerge.Enabled := not B;
+
+  btnBrowseSrc.Enabled := not B;
+  btnAddParts.Enabled := not B;
+  btnClearParts.Enabled := not B;
+  btnBrowseOut.Enabled := not B;
+  btnClose.Enabled := not B;
+end;
+
+procedure TfrmSplitMerge.LogProgress(const S: string; Level: TLogLevel = lvTrace);
+begin
+  if S = '' then
+    Exit;
+  LogMsg('[SplitMerge] ' + S, Level);
+end;
+
+procedure TfrmSplitMerge.ApplySplitProgress(const Info: TProgressInfo);
+var
+  PctGlobal, PctTensor: Integer;
+  S: string;
+begin
+  // ProgressBar1 = progression globale
+  ProgressBar1.Max := 100;
+  PctGlobal := PctD(Info.GlobalBytesDone, Info.GlobalBytesTotal);
+  if Info.Kind = pkDone then
+    PctGlobal := 100
+  else if PctGlobal > 99 then
+    PctGlobal := 99;
+  ProgressBar1.Position := PctGlobal;
+
+  // ProgressBar2 = progression du tenseur courant
+  ProgressBar2.Max := 100;
+  PctTensor := PctD(Info.TensorBytesDone, Info.TensorBytesTotal);
+  if PctTensor > 100 then
+    PctTensor := 100;
+  ProgressBar2.Position := PctTensor;
+
+  case Info.Kind of
+    pkHeader:
+      if Info.IsMetaPart then
+        S := Format('Part %d/%d : metadata (header-only file)', [Info.PartNo, Info.PartTot])
+      else
+        S := Format('Part %d/%d : %s', [Info.PartNo, Info.PartTot, ExtractFileName(Info.SourceFile)]);
+
+    pkTensorStart:
+      S := Format('Tensor %d/%d : %s', [Info.TensorIdx, Info.TensorTotal, Info.Msg]);
+
+    pkTensorProg:
+      S := Format('Tensor %d/%d : %s  %s/%s', [Info.TensorIdx, Info.TensorTotal, Info.Msg,
+        FormatBytes2f(Info.TensorBytesDone), FormatBytes2f(Info.TensorBytesTotal)]);
+
+    pkPartDone:
+      S := Format('Part %d/%d written : %s | global %d%%', [Info.PartNo, Info.PartTot, FormatBytes2f(Info.PartBytes),
+        PctD(Info.GlobalBytesDone, Info.GlobalBytesTotal)]);
+
+    pkDone:
+      S := 'Split completed';
+
+    pkCancelled:
+      S := 'Split cancelled';
+  else
+    if Info.Msg <> '' then
+      S := Info.Msg
+    else
+      S := 'Split...';
+  end;
+
+  StatusBar1.Panels[0].Text := S;
+
+  // Log fichier sans trop polluer
+  case Info.Kind of
+    pkHeader, pkTensorStart, pkPartDone, pkDone, pkCancelled:
+      LogProgress(S, lvNotice);
+    pkTensorProg:
+      LogProgress(S, lvTrace);
+  else
+    if Info.Msg <> '' then
+      LogProgress(S, lvInfo);
+  end;
+end;
+
+procedure TfrmSplitMerge.ApplyMergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64; Level: TLogLevel = lvTrace);
+var
+  Pct1, Pct2: Integer;
+  S: string;
+begin
+  // Important : forcer Max=100 pour la barre 1, sinon Merge hérite parfois du Max du Split
+  ProgressBar1.Max := 100;
+
+  if ATensorTotal > 0 then
+    Pct1 := PctD(ATensorIdx, ATensorTotal)
+  else
+    Pct1 := 0;
+
+  if Pct1 > 100 then
+    Pct1 := 100;
+
+  ProgressBar1.Position := Pct1;
+
+  ProgressBar2.Max := 100;
+
+  if AByteTotal > 0 then
+    Pct2 := PctD(AByteIdx, AByteTotal)
+  else
+    Pct2 := 0;
+
+  if Pct2 > 100 then
+    Pct2 := 100;
+
+  ProgressBar2.Position := Pct2;
+
+  if AByteTotal > 0 then
+    S := Format('Merge %s | %s / %s', [Msg, FormatBytes2f(AByteIdx), FormatBytes2f(AByteTotal)])
+  else
+    S := Format('Merge %s', [Msg]);
+
+  StatusBar1.Panels[0].Text := S;
+  LogProgress(S, Level);
+end;
+
+procedure TfrmSplitMerge.SplitProgress(const Info: TProgressInfo);
+var
+  LInfo: TProgressInfo;
+begin
+  // Copie locale pour éviter tout souci de capture/threading
+  LInfo := Info;
+
   TThread.Queue(nil,
     procedure
     begin
-      ProgressBar1.Position := ATensorIdx;
-      ProgressBar1.Max := ATensorTotal;
-      ProgressBar2.Position := AByteIdx;
-      ProgressBar2.Max := AByteTotal;
-      // smLogMsg(Format('Split %s | %.2f/%.2f MiB', [Msg, AByteIdx / 1024 / 1024, AByteTotal / 1024 / 1024]));
-      smLogMsg(mLang.gMsgFmt('FSM.SplitProgress', [Msg, AByteIdx / 1024 / 1024, AByteTotal / 1024 / 1024]));
-      Application.ProcessMessages;
+      if not Assigned(frmSplitMerge) then
+        Exit;
+      frmSplitMerge.ApplySplitProgress(LInfo);
     end);
 end;
 
-procedure TfrmSplitMerge.MergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64);
+procedure TfrmSplitMerge.MergeProgress(const Msg: string; ATensorIdx, ATensorTotal, AByteIdx, AByteTotal: Int64;
+ Level: TLogLevel = lvTrace);
 var
-  pct: Integer;
+  LMsg: string;
+  LT1, LT2, LA, LB: Int64;
 begin
+  LMsg := Msg;
+  LT1 := ATensorIdx;
+  LT2 := ATensorTotal;
+  LA := AByteIdx;
+  LB := AByteTotal;
+
   TThread.Queue(nil,
     procedure
     begin
-      if ATensorTotal > 0 then
-        pct := Round((ATensorIdx / ATensorTotal) * 100)
-      else
-        pct := 0;
-      if pct < 0 then
-        pct := 0
-      else if pct > 100 then
-        pct := 100;
-      ProgressBar1.Position := pct;
-
-      ProgressBar2.Position := AByteIdx;
-      ProgressBar2.Max := AByteTotal;
-
-      if AByteTotal > 0 then
-        smLogMsg(Format('Merge %s | %.2f/%.2f MiB', [Msg, AByteIdx / 1024 / 1024, AByteTotal / 1024 / 1024]))
-        // smLogMsg(mLang.gMsgFmt('FSM.MergeProgress', [Msg, AByteIdx / 1024 / 1024, AByteTotal / 1024 / 1024]))
-
-      else
-        smLogMsg(Format('Merge %s', [Msg]));
-      // smLogMsg(mLang.gMsgFmt('FSM.MergeProgress', [Msg]));
-
-      Application.ProcessMessages;
+      if not Assigned(frmSplitMerge) then
+        Exit;
+      frmSplitMerge.ApplyMergeProgress(LMsg, LT1, LT2, LA, LB);
     end);
 end;
 
@@ -143,11 +283,13 @@ begin
     if (edtSrc.Text <> OpenDialog1.FileName) and FileExists(OpenDialog1.FileName) then
     begin
       edtSrc.Text := OpenDialog1.FileName;
+
+      // Split default output
       ssPrefix := edtPrefixSplit.Text;
       I := 1;
       ssfn0 := ChangeFileExt(OpenDialog1.FileName, '') + ssPrefix;
       ssfn := ssfn0 + IntToStr(I) + '.gguf';
-      While FileExists(ssfn) do
+      while FileExists(ssfn) do
       begin
         Inc(I);
         if I > 100 then
@@ -155,14 +297,13 @@ begin
         ssfn := ssfn0 + IntToStr(I) + '.gguf';
       end;
       edtSplitOut.Text := ssfn;
-      // smLogMsg('Source sélectionnée: ' + edtSrc.Text);
-      smLogMsg(mLang.gMsgFmt('FSM.SourceSelected', [edtSrc.Text]));
 
+      // Merge default output
       ssPrefix := edtPrefixMerge.Text;
       I := 1;
       ssfn0 := ChangeFileExt(OpenDialog1.FileName, '') + ssPrefix;
       ssfn := ssfn0 + IntToStr(I) + '.gguf';
-      While FileExists(ssfn) do
+      while FileExists(ssfn) do
       begin
         Inc(I);
         if I > 100 then
@@ -171,60 +312,110 @@ begin
       end;
       edtMergeOut.Text := ssfn;
 
+      smLogMsg(mLang.gMsgFmt('FSM.SourceSelected', [edtSrc.Text]));
     end;
   end;
 end;
 
 procedure TfrmSplitMerge.btnSplitClick(Sender: TObject);
 var
-  Model: TGGUFFile;
-  Src, sSplitOu: string;
+  Src, OutFile: string;
   MaxB: Int64;
+  SaveMetaSeparate: Boolean;
 begin
+  if FBusy then
+    Exit;
+
   Src := Trim(edtSrc.Text);
-  sSplitOu := Trim(edtSplitOut.Text);
+  OutFile := Trim(edtSplitOut.Text);
+
   if (Src = '') or (not FileExists(Src)) then
   begin
-    // MessageDlg('Source invalide.', mtWarning, [mbOK], 0);
     MessageDlg(mLang.gMsg('FSM.InvalidSource'), mtWarning, [mbOK], 0);
     Exit;
   end;
-  if sSplitOu = '' then
+
+  if OutFile = '' then
   begin
-    // MessageDlg('BaseOut vide.', mtWarning, [mbOK], 0);
     MessageDlg(mLang.gMsg('FSM.EmptyBaseOut'), mtWarning, [mbOK], 0);
     Exit;
   end;
 
-  try
-    MaxB := cfg.SplitSizeMBytes;
-    // smLogMsg(Format('Split démarré: %s | Max=%d MB', [Src, MaxB div (1024 * 1024)]));
-    smLogMsg(mLang.gMsgFmt('FSM.SplitStarted', [Src, MaxB div (1024 * 1024)]));
-    Model := TGGUFReader.LoadFromFile(Src);
-    try
-      TGGUFWriter.SaveAs(Model, sSplitOu, MaxB, cfg.SaveMetaSeparate, True, SplitProgress);
-      // smLogMsg('Split terminé. Fichiers: ' + sSplitOu + '-00001-of-0000N.gguf');
-      smLogMsg(mLang.gMsgFmt('FSM.SplitFinishedFiles', [sSplitOu + '-00001-of-0000N.gguf']));
-      // MessageDlg('Split terminé.', mtInformation, [mbOK], 0);
-      MessageDlg(mLang.gMsg('FSM.SplitFinished'), mtInformation, [mbOK], 0);
-    finally
-      Model.Free;
-    end;
-  except
-    on E: Exception do
+  MaxB := cfg.SplitSizeMBytes;
+  SaveMetaSeparate := cfg.SaveMetaSeparate;
+
+  SetBusy(True);
+
+  ProgressBar1.Max := 100;
+  ProgressBar1.Position := 0;
+  ProgressBar2.Max := 100;
+  ProgressBar2.Position := 0;
+
+  smLogMsg(mLang.gMsgFmt('FSM.SplitStarted', [Src, MaxB div (1024 * 1024)]));
+
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Model: TGGUFFile;
+      ErrMsg: string;
     begin
-      // smLogMsg('ERREUR Split: ' + E.Message);
-      smLogMsg(mLang.gMsgFmt('FSM.SplitError', [E.Message]));
-      // MessageDlg('Erreur: ' + E.Message, mtError, [mbOK], 0);
-      MessageDlg(mLang.gMsgFmt('FSM.SplitError', [E.Message]), mtError, [mbOK], 0);
-    end;
-  end;
+      Model := nil;
+      ErrMsg := '';
+      try
+        try
+          Model := TGGUFReader.LoadFromFile(Src);
+
+          TGGUFWriter.SaveAs(Model, OutFile, MaxB, SaveMetaSeparate,
+            procedure(const Info: TProgressInfo)
+            begin
+              if not Assigned(frmSplitMerge) then
+                Exit;
+              frmSplitMerge.SplitProgress(Info);
+            end, nil);
+        except
+          on E: Exception do
+            ErrMsg := E.Message;
+        end;
+      finally
+        if Model <> nil then
+          Model.Free;
+      end;
+
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not Assigned(frmSplitMerge) then
+            Exit;
+
+          frmSplitMerge.SetBusy(false);
+
+          if ErrMsg <> '' then
+          begin
+            frmSplitMerge.StatusBar1.Panels[0].Text := mLang.gMsgFmt('FSM.SplitError', [ErrMsg]);
+            LogMsg('[SplitMerge] ' + mLang.gMsgFmt('FSM.SplitError', [ErrMsg]));
+            MessageDlg(mLang.gMsgFmt('FSM.SplitError', [ErrMsg]), mtError, [mbOK], 0);
+          end
+          else
+          begin
+            frmSplitMerge.StatusBar1.Panels[0].Text := mLang.gMsgFmt('FSM.SplitFinishedFiles',
+              [OutFile + '-00001-of-0000N.gguf']);
+            LogMsg('[SplitMerge] ' + mLang.gMsgFmt('FSM.SplitFinishedFiles', [OutFile + '-00001-of-0000N.gguf']));
+            MessageDlg(mLang.gMsg('FSM.SplitFinished'), mtInformation, [mbOK], 0);
+          end;
+
+          frmSplitMerge.ProgressBar1.Position := 0;
+          frmSplitMerge.ProgressBar2.Position := 0;
+        end);
+    end).Start;
 end;
 
 procedure TfrmSplitMerge.btnAddPartsClick(Sender: TObject);
 var
   I: Integer;
 begin
+  if FBusy then
+    Exit;
+
   if OpenDialogParts.Execute then
   begin
     for I := 0 to OpenDialogParts.Files.Count - 1 do
@@ -232,24 +423,27 @@ begin
       if lbParts.Items.IndexOf(OpenDialogParts.Files[I]) < 0 then
         lbParts.Items.Add(OpenDialogParts.Files[I]);
     end;
-    // smLogMsg(Format('%d part(s) ajoutée(s). Total=%d', [OpenDialogParts.Files.Count, lbParts.Items.Count]));
     smLogMsg(mLang.gMsgFmt('FSM.PartsAdded', [OpenDialogParts.Files.Count, lbParts.Items.Count]));
   end;
 end;
 
 procedure TfrmSplitMerge.btnClearPartsClick(Sender: TObject);
 begin
+  if FBusy then
+    Exit;
+
   lbParts.Items.Clear;
-  // smLogMsg('Liste des parts vidée.');
   smLogMsg(mLang.gMsg('FSM.PartsListCleared'));
 end;
 
 procedure TfrmSplitMerge.btnBrowseOutClick(Sender: TObject);
 begin
+  if FBusy then
+    Exit;
+
   if SaveDialog1.Execute then
   begin
     edtMergeOut.Text := SaveDialog1.FileName;
-    // smLogMsg('Sortie merge: ' + edtMergeOut.Text);
     smLogMsg(mLang.gMsgFmt('FSM.MergeOutput', [edtMergeOut.Text]));
   end;
 end;
@@ -258,9 +452,13 @@ function TfrmSplitMerge.CollectPartFiles: TStringList;
 var
   I: Integer;
 begin
-  Result := TStringList.Create;
-  for I := 0 to lbParts.Items.Count - 1 do
-    Result.Add(lbParts.Items[I]);
+  try
+    Result := TStringList.Create;
+    for I := 0 to lbParts.Items.Count - 1 do
+      Result.Add(lbParts.Items[I]);
+  finally
+
+  end;
 end;
 
 procedure TfrmSplitMerge.btnMergeClick(Sender: TObject);
@@ -268,44 +466,80 @@ var
   Parts: TStringList;
   OutFile: string;
 begin
+  if FBusy then
+    Exit;
+
   OutFile := Trim(edtMergeOut.Text);
   if OutFile = '' then
   begin
-    // MessageDlg('Définissez un fichier de sortie merge.', mtWarning, [mbOK], 0);
     MessageDlg(mLang.gMsg('FSM.SetMergeOutput'), mtWarning, [mbOK], 0);
     Exit;
   end;
 
   if lbParts.Items.Count = 0 then
   begin
-    // MessageDlg('Ajoutez au moins un fichier part à merger.', mtWarning, [mbOK], 0);
     MessageDlg(mLang.gMsg('FSM.AddParts'), mtWarning, [mbOK], 0);
     Exit;
   end;
 
   Parts := CollectPartFiles;
-  try
-    // smLogMsg(Format('Merge démarré: parts=%d | out=%s', [Parts.Count, OutFile]));
-    smLogMsg(mLang.gMsgFmt('FSM.MergeStarted', [Parts.Count, OutFile]));
-    TGGUFWriter.MergeParts(Parts, OutFile, MergeProgress);
-    // smLogMsg('Merge terminé.');
-    smLogMsg(mLang.gMsg('FSM.MergeFinished'));
-    // MessageDlg('Merge terminé: ' + OutFile, mtInformation, [mbOK], 0);
-    MessageDlg(mLang.gMsgFmt('FSM.MergeFinishedFile', [OutFile]), mtInformation, [mbOK], 0);
-  except
-    on E: Exception do
+
+  SetBusy(True);
+
+  ProgressBar1.Max := 100;
+  ProgressBar1.Position := 0;
+  ProgressBar2.Max := 100;
+  ProgressBar2.Position := 0;
+
+  smLogMsg(mLang.gMsgFmt('FSM.MergeStarted', [Parts.Count, OutFile]));
+
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      ErrMsg: string;
     begin
-      // smLogMsg('ERREUR Merge: ' + E.Message);
-      smLogMsg(mLang.gMsgFmt('FSM.MergeError', [E.Message]));
-      // MessageDlg('Erreur Merge: ' + E.Message, mtError, [mbOK], 0);
-      MessageDlg(mLang.gMsgFmt('FSM.MergeError', [E.Message]), mtError, [mbOK], 0);
-    end;
-  end;
-  Parts.Free;
+      ErrMsg := '';
+      try
+        TGGUFWriter.MergeParts(Parts, OutFile, frmSplitMerge.MergeProgress);
+      except
+        on E: Exception do
+          ErrMsg := E.Message;
+      end;
+
+      TThread.Queue(nil,
+        procedure
+        begin
+          if not Assigned(frmSplitMerge) then
+            Exit;
+
+          frmSplitMerge.SetBusy(false);
+
+          if ErrMsg <> '' then
+          begin
+            frmSplitMerge.StatusBar1.Panels[0].Text := mLang.gMsgFmt('FSM.MergeError', [ErrMsg]);
+            LogMsg('[SplitMerge] ' + mLang.gMsgFmt('FSM.MergeError', [ErrMsg]));
+            MessageDlg(mLang.gMsgFmt('FSM.MergeError', [ErrMsg]), mtError, [mbOK], 0);
+          end
+          else
+          begin
+            frmSplitMerge.StatusBar1.Panels[0].Text := mLang.gMsgFmt('FSM.MergeFinishedFile', [OutFile]);
+            LogMsg('[SplitMerge] ' + mLang.gMsgFmt('FSM.MergeFinishedFile', [OutFile]));
+            MessageDlg(mLang.gMsgFmt('FSM.MergeFinishedFile', [OutFile]), mtInformation, [mbOK], 0);
+          end;
+
+          frmSplitMerge.ProgressBar1.Position := 0;
+          frmSplitMerge.ProgressBar2.Position := 0;
+        end);
+    end).Start;
 end;
 
 procedure TfrmSplitMerge.btnCloseClick(Sender: TObject);
 begin
+  if FBusy then
+  begin
+    MessageDlg('Operation in progress...', mtWarning, [mbOK], 0);
+    Exit;
+  end;
   Close;
 end;
 

@@ -47,7 +47,7 @@ begin
   except
     on E: Exception do
       // ShowMessage('Impossible d'#39#39262'rouvrir le lien : ' + E.Message);
-      MessageDlg(mLang.gMsgFmt('FAB.OpenLinkError', [E.Message]), mtError, [mbOK], 0);
+      // MessageDlg(mLang.gMsgFmt('FAB.OpenLinkError', [E.Message]), mtError, [mbOK], 0);
   end;
 end;
 

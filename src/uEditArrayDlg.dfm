@@ -10,6 +10,7 @@ object frmEditArrayDlg: TfrmEditArrayDlg
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  Position = poOwnerFormCenter
   OnCreate = FormCreate
   OnShow = FormShow
   TextHeight = 13
@@ -170,7 +171,7 @@ object frmEditArrayDlg: TfrmEditArrayDlg
         OnClick = btnNextAllClick
       end
     end
-    object cbArrType1: TComboBox
+    object cbArrType: TComboBox
       Left = 355
       Top = 16
       Width = 100
@@ -179,6 +180,7 @@ object frmEditArrayDlg: TfrmEditArrayDlg
       Anchors = [akTop, akRight]
       TabOrder = 1
       Visible = False
+      OnChange = cbArrTypeChange
     end
   end
   object sgArray: TStringGrid

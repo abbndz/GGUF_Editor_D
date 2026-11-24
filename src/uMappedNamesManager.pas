@@ -3,10 +3,10 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.UITypes, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ComCtrls,
   Vcl.Grids, Vcl.ExtCtrls, Vcl.Menus, System.Generics.Collections, uAppConfig, uTensorsNamesMan,
-  uGgufStrUtils, uGGUFModel, uGGUFTypes;
+  uStrUtils, uGGUFModel, uGGUFTypes, uLangManager;
 
 type
   TFrmMappedNamesManager = class(TForm)
@@ -45,7 +45,6 @@ type
     procedure FormShow(Sender: TObject);
     procedure cmbMappingFileChange(Sender: TObject);
     procedure btnSaveMappingClick(Sender: TObject);
-    procedure miClearAllClick(Sender: TObject);
     procedure btnAddPrefixClick(Sender: TObject);
     procedure btnDeletePrefixClick(Sender: TObject);
     procedure btnSavePrefixesClick(Sender: TObject);
@@ -59,7 +58,6 @@ type
     procedure btnDeleteRowClick(Sender: TObject);
   private
     FCurrentMappingFile: string;
-    procedure btnClearGridMapping();
     procedure LoadMappingFilesToCombo;
     procedure LoadCurrentMappingToGrid;
     // procedure SaveCurrentMappingFromFile;
@@ -75,6 +73,7 @@ type
   // Helpers pour le reste de l'application
 procedure frmEditTensorsApplyMappedNames1(sMappedNames: String);
 procedure frmEditTensorsApplyMappedNames2(sMappedNames: String);
+procedure frmEditTensorsApplyMappedNames3(sMappedNames: String);
 procedure frmEditTensorsApplyMappedNamesS(sMappedNames: String);
 
 var
@@ -82,7 +81,7 @@ var
 
 implementation
 
-uses uEditTensors, uEditTensorsIO, uLangManager;
+uses uEditTensors, uEditTensorsView;
 
 // Accès aux membres protégés de TStringGrid
 type
@@ -104,10 +103,11 @@ begin
     eLogMsg(mLang.gMsgFmt('FTE.MappingDisabled', ['Model A']));
   end;
   // Appliquer immédiatement si modèle chargé
-  GetMappedNamesStrings(cfg.MappingFile1, cfg.TensorMappings1, gMapping1);
+  GetMappedNamesStrings(cfg.MappingFile1, gMapping1);
   if Assigned(frmEditTensors.FModelInp1) then
   begin
     ApplyMappingToModel(frmEditTensors.FModelInp1, gMapping1, (sMappedNames <> 'NoMappedNames'));
+    frmEditTensorsUpdateDiffBFromA;
     frmEditTensorsRebuildView1;
     frmEditTensorsRebuildViewOut;
   end;
@@ -129,9 +129,34 @@ begin
   end;
   if Assigned(frmEditTensors.FModelInp2) then
   begin
-    GetMappedNamesStrings(cfg.MappingFile2, cfg.TensorMappings2, gMapping2);
+    GetMappedNamesStrings(cfg.MappingFile2, gMapping2);
     ApplyMappingToModel(frmEditTensors.FModelInp2, gMapping2, (sMappedNames <> 'NoMappedNames'));
+    frmEditTensorsUpdateDiffBFromA;
     frmEditTensorsRebuildView2;
+    frmEditTensorsRebuildViewOut;
+  end;
+  cfgSaveSettings(cfg);
+end;
+
+procedure frmEditTensorsApplyMappedNames3(sMappedNames: String);
+begin
+  cfg.MappingFile3 := sMappedNames;
+  if (sMappedNames <> 'NoMappedNames') then
+  begin
+    // LogMsg('Mappage "' + cfg.MappingFile3 + '" activé pour FModelInp3.');
+    eLogMsg(mLang.gMsgFmt('FTE.MappingEnabled', [cfg.MappingFile3, 'Model C']))
+  end
+  else
+  begin
+    // LogMsg('Mappage désactivé pour FModelInp3.');
+    eLogMsg(mLang.gMsgFmt('FTE.MappingDisabled', ['Model C']));
+  end;
+  if Assigned(frmEditTensors.FModelInp3) then
+  begin
+    GetMappedNamesStrings(cfg.MappingFile3, gMapping3);
+    ApplyMappingToModel(frmEditTensors.FModelInp3, gMapping3, (sMappedNames <> 'NoMappedNames'));
+    frmEditTensorsUpdateDiffCFromA;
+    frmEditTensorsRebuildView3;
     frmEditTensorsRebuildViewOut;
   end;
   cfgSaveSettings(cfg);
@@ -153,7 +178,7 @@ begin
 
   if Assigned(frmEditTensors.FModelInpS) then
   begin
-    GetMappedNamesStrings(cfg.MappingFileS, cfg.TensorMappingsS, gMappingS);
+    GetMappedNamesStrings(cfg.MappingFileS, gMappingS);
     ApplyMappingToModel(frmEditTensors.FModelInpS, gMappingS, (sMappedNames <> 'NoMappedNames'));
     frmEditTensorsRebuildViewS;
     frmEditTensorsRebuildViewOut;
@@ -179,7 +204,7 @@ begin
   LoadPrefixesToListView;
   LoadIgnoredToListView;
   LoadCurrentMappingToGrid;
-  StatusBar1.Panels[0].Text := 'Prêt';
+  StatusBar1.Panels[0].Text := mLang.gMsg('FTE.Ready');// 'Prêt';
 end;
 
 // GESTION DES MAPPAGES (TAB 1)
@@ -257,12 +282,11 @@ procedure TFrmMappedNamesManager.btnSaveMappingClick(Sender: TObject);
 var
   SL: TStringList;
   i: Integer;
-  SavePath, ConfirmMsg, sDir: string;
+  SavePath, sDir: string;
   SaveDlg: TSaveDialog;
-  IsOverwrite: Boolean;
 begin
   sDir := GetMappingDir();
-  if (FCurrentMappingFile = 'NoMappedNames') or not FileExists(sDir) then
+  if (FCurrentMappingFile = 'NoMappedNames') or not FileExists(sDir + FCurrentMappingFile + '.txt') then
   begin
     // Mode Nouveau : Forcer le "Enregistrer sous"
     SaveDlg := TSaveDialog.Create(Self);
@@ -316,18 +340,6 @@ begin
   end;
 end;
 
-procedure TFrmMappedNamesManager.btnClearGridMapping();
-begin
-  StringGrid1.RowCount := 2;
-  StringGrid1.Cells[0, 1] := '';
-  StringGrid1.Cells[1, 1] := '';
-end;
-
-procedure TFrmMappedNamesManager.miClearAllClick(Sender: TObject);
-begin
-  // if MessageDlg('Effacer tout le contenu du mappage ?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-  // btnClearMappingClick;
-end;
 
 procedure TFrmMappedNamesManager.LoadPrefixesToListView;
 var
@@ -539,24 +551,28 @@ end;
 // SYNCHRONISATION GLOBALE
 
 procedure TFrmMappedNamesManager.UpdateGlobalEngines;
-var
-  SL1, SL2, SLS: TStringList;
 begin
   GetLayersPrefixList();
   GetIgnoredPrefixList();
 
   FreeAndNil(gMapping1);
-  GetMappedNamesStrings(cfg.MappingFile1, cfg.TensorMappings1, gMapping1);
+  GetMappedNamesStrings(cfg.MappingFile1, gMapping1);
   // gMapping1 := TMappingEngine.Create(cfg.TensorMappings1);
+
   FreeAndNil(gMapping2);
-  GetMappedNamesStrings(cfg.MappingFile2, cfg.TensorMappings2, gMapping2);
+  GetMappedNamesStrings(cfg.MappingFile2, gMapping2);
   // gMapping2 := TMappingEngine.Create(cfg.TensorMappings2);
+
+  FreeAndNil(gMapping3);
+  GetMappedNamesStrings(cfg.MappingFile3, gMapping3);
+
   FreeAndNil(gMappingS);
-  GetMappedNamesStrings(cfg.MappingFileS, cfg.TensorMappingsS, gMappingS);
+  GetMappedNamesStrings(cfg.MappingFileS, gMappingS);
   // gMappingS := TMappingEngine.Create(cfg.TensorMappingsS);
 
   frmEditTensors.cbMappedNames1.Items.Assign(GetAvailableMappedNames);
   frmEditTensors.cbMappedNames2.Items.Assign(frmEditTensors.cbMappedNames1.Items);
+  frmEditTensors.cbMappedNames3.Items.Assign(frmEditTensors.cbMappedNames1.Items);
   frmEditTensors.cbMappedNamesS.Items.Assign(frmEditTensors.cbMappedNames1.Items);
 end;
 

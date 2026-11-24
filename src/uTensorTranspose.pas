@@ -8,7 +8,6 @@ uses
 
 type
   TProgressProc = reference to procedure(AProgress: Integer);
-  // TProgressProc = procedure(Percent: Integer) of object;
 
   TTransposeEngine = class
   private
@@ -16,12 +15,12 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    class function GetModelTmpDir(const ModelFileName, TensorName: string): string; static;
-    class function SetTransposDims(var T: TGGUFTensorInfo): string;
+    class function GetModelTmpFileName(const ModelFileName, TensorName: string): string; static;
+    class procedure SetTransposDims(var T: TGGUFTensorInfo);
     class procedure ExecuteTransposition1(const T: TGGUFTensorInfo; const SourceStream: TStream;
-      const ModelFileName: string; UseDLL: Boolean = False; const OnProgress: TProgressProc = nil); static;
+      const ModelFileName: string; const OnProgress: TProgressProc = nil); static;
     class procedure ExecuteTransposition2(const T: TGGUFTensorInfo; const SourceStream: TStream;
-      const ModelFileName: string; UseDLL: Boolean = False; const OnProgress: TProgressProc = nil); static;
+      const ModelFileName: string; const OnProgress: TProgressProc = nil); static;
   end;
 
 implementation
@@ -38,7 +37,7 @@ begin
   inherited;
 end;
 
-class function TTransposeEngine.GetModelTmpDir(const ModelFileName: string; const TensorName: string): string;
+class function TTransposeEngine.GetModelTmpFileName(const ModelFileName: string; const TensorName: string): string;
 var
   ModelName, BaseDir: string;
 begin
@@ -50,7 +49,7 @@ begin
   Result := Result + TensorName + '_transposed.bin';
 end;
 
-class function TTransposeEngine.SetTransposDims(var T: TGGUFTensorInfo): string;
+class procedure TTransposeEngine.SetTransposDims(var T: TGGUFTensorInfo);
 var
   TempR: Int64;
 begin
@@ -69,7 +68,7 @@ begin
 end;
 
 class procedure TTransposeEngine.ExecuteTransposition1(const T: TGGUFTensorInfo; const SourceStream: TStream;
-  const ModelFileName: string; UseDLL: Boolean = False; const OnProgress: TProgressProc = nil);
+  const ModelFileName: string; const OnProgress: TProgressProc = nil);
 var
   Rows, Cols, TotalElems: Int64;
   I, J: Integer;
@@ -79,10 +78,12 @@ var
   fStream: TFileStream;
   ProgressStep: Integer;
   TotalBytes: Int64;
+  UseDLL: Boolean;
 begin
   if not Assigned(T) or (T.NDims < 2) or (T.TotElems <= 0) then
     raise Exception.Create('Tenseur invalide pour transposition.');
 
+  UseDLL := (T.UseImpl = 0) or (T.UseImpl = 2);
   Cols := T.Dims[0];
   Rows := T.Dims[1];
   TotalElems := Rows * Cols;
@@ -131,14 +132,14 @@ begin
   try
     SetLength(DstRaw, TotalBytes);
     // On convertit de F32 (transposé) -> Raw
-    Quant(@DstF32[0], @DstRaw[0], TotalElems, T.TensorTypeOrg, UseDLL);
+    Quant(@DstF32[0], @DstRaw[0], TotalElems, T.TensorTypeOrg, T.UseImpl, T.RmseType);
   finally
     // On vide DstF32 IMMÉDIATEMENT après la quantification
     SetLength(DstF32, 0);
   end;
 
   // ÉTAPE 4 : SAUVEGARDE ---
-  TmpPath := GetModelTmpDir(ModelFileName, string(T.NameOrg));
+  TmpPath := GetModelTmpFileName(ModelFileName, string(T.NameOrg));
   fStream := TFileStream.Create(TmpPath, fmCreate);
   try
     fStream.WriteBuffer(DstRaw[0], TotalBytes);
@@ -150,21 +151,23 @@ begin
 end;
 
 class procedure TTransposeEngine.ExecuteTransposition2(const T: TGGUFTensorInfo; const SourceStream: TStream;
-  const ModelFileName: string; UseDLL: Boolean = False; const OnProgress: TProgressProc = nil);
+  const ModelFileName: string; const OnProgress: TProgressProc = nil);
 var
   Rows, Cols, TotalElems: Int64;
-  I, J, BI, Bjj: Integer;
   SrcF32, DstF32: TArray<Single>;
   SrcRaw, DstRaw: TArray<Byte>;
   TmpPath: string;
   fStream: TFileStream;
   TotalBytes: Int64;
   BlockSize: Integer;
+  UseDLL: Boolean;
 const
   BLOCK_SIZE = 32; // Taille du bloc pour optimiser le cache L1/L2
 begin
   if not Assigned(T) or (T.NDims < 2) or (T.TotElems <= 0) then
     raise Exception.Create('Tenseur invalide pour transposition.');
+
+  UseDLL := (T.UseImpl = 0) or (T.UseImpl = 2);
 
   Cols := T.Dims[0];
   Rows := T.Dims[1];
@@ -204,7 +207,7 @@ begin
       for Bjj := 0 to (Cols - 1) div BlockSize do
       begin
         ColStart := Bjj * BlockSize;
-        JEnd := Min(ColStart + BlockSize, Integer(Cols));
+        JEnd := Min(ColStart + BlockSize, Cols);
 
         // Transposition du bloc local
         for I := RowStart to IEnd - 1 do
@@ -223,10 +226,10 @@ begin
 
   // 4. Re-quantification
   SetLength(DstRaw, TotalBytes);
-  Quant(@DstF32[0], @DstRaw[0], TotalElems, T.TensorTypeOrg, UseDLL);
+  Quant(@DstF32[0], @DstRaw[0], TotalElems, T.TensorTypeOrg, T.UseImpl, T.RmseType);
 
   // 5. Écriture
-  TmpPath := GetModelTmpDir(ModelFileName, string(T.NameOrg));
+  TmpPath := GetModelTmpFileName(ModelFileName, string(T.NameOrg));
   fStream := TFileStream.Create(TmpPath, fmCreate);
   try
     fStream.WriteBuffer(DstRaw[0], TotalBytes);

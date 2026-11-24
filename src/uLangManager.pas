@@ -28,6 +28,7 @@ type
     destructor Destroy; override;
 
     function gMsg(const AKey: string; const ASection: string = 'Messages'): string;
+    function gStrFmt(const sStr: string; const Args: array of const): string;
     function gMsgFmt(const AKey: string; const Args: array of const; const ASection: string = 'Messages'): string;
 
     /// <summary>
@@ -137,76 +138,20 @@ end;
 // Cette fonction doit être en phase avec GetNativeLanguageName
 function GetSystemLanguageISO: string;
 var
-  LangID: Word;
+  LID: Word;
+  Buf: array[0..8] of Char;
 begin
-  // GetUserDefaultUILanguage retourne un Word (ex: $040C pour le Français)
-  LangID := GetUserDefaultUILanguage;
-
-  // On utilise le masque $FFF0 pour ignorer la région (ex: $040C pour FR, $080C pour Canada)
-  // et ne garder que la langue principale.
-  case LangID and $FFF0 of
-    $0401:
-      result := 'ar'; // Arabic
-    $0403:
-      result := 'cs'; // Czech
-    $0407:
-      result := 'de'; // German
-    $0408:
-      result := 'it'; // Italian
-    $0409:
-      result := 'en'; // English
-    $040A:
-      result := 'es'; // Spanish
-    $040C:
-      result := 'fr'; // French
-    $040D:
-      result := 'he'; // Hebrew
-    $0411:
-      result := 'ja'; // Japanese
-    $0412:
-      result := 'ko'; // Korean
-    $0413:
-      result := 'nl'; // Dutch
-    $0415:
-      result := 'pl'; // Polish
-    $0416:
-      result := 'pt'; // Portuguese
-    $0419:
-      result := 'ru'; // Russian
-    $041A:
-      result := 'sv'; // Swedish
-    $041B:
-      result := 'uk'; // Ukrainian
-    $041E:
-      result := 'hi'; // Hindi (Note: $041E est aussi utilisé pour Hungarian dans certains contextes)
-    $041F:
-      result := 'tr'; // Turkish
-    $0421:
-      result := 'id'; // Indonesian
-    $042A:
-      result := 'vi'; // Vietnamese
-    $042C:
-      result := 'fi'; // Finnish
-    $0440:
-      result := 'el'; // Greek
-    $0464:
-      result := 'da'; // Danish
-    $042F:
-      result := 'fa'; // Persian
-    $042E:
-      result := 'hu'; // Hungarian (Alternative ID selon les versions de Windows)
-    $0E01:
-      result := 'th'; // Thai
-    // Gestion spécifique du Chinois
-    $0804:
-      result := 'zh_cn'; // Chinese (Simplified)
-    $0C04:
-      result := 'zh_tw'; // Chinese (Traditional)
-
+  Result := 'en';
+  LID := GetUserDefaultUILanguage;
+  if GetLocaleInfoW(MAKELANGID(LOWORD(LID) and $3FF, SUBLANGID(LID)), LOCALE_SISO639LANGNAME, Buf, Length(Buf)) > 0 then
+    Result := LowerCase(string(Buf))
   else
-    // Si la langue n'est pas reconnue, on retourne 'en' par défaut
-    result := 'en';
-  end;
+    Exit;
+  if Result = 'zh' then
+    if SUBLANGID(LID) = SUBLANG_CHINESE_TRADITIONAL then
+      Result := 'zh_tw'
+    else
+      Result := 'zh_cn';
 end;
 
 function TLangManager.GetNativeLanguageName(const ISOCode: string): string;
@@ -278,8 +223,11 @@ end;
 function TLangManager.GetListLangues: TStrings;
 var
   i: Integer;
+  sLng: string;
 begin
+  sLng := GetSystemLanguageISO;
   result := TStringList.Create;
+  result.Add(sLng);
   for i := 0 to FLangCodes.Count - 1 do
     result.Add(GetNativeLanguageName(FLangCodes[i]));
 end;
@@ -585,8 +533,7 @@ begin
   end;
 end;
 
-function TLangManager.gMsgFmt(const AKey: string; const Args: array of const;
-  const ASection: string = 'Messages'): string;
+function TLangManager.gStrFmt(const sStr: string; const Args: array of const): string;
 var
   i: Integer;
   Placeholder: string;
@@ -594,44 +541,57 @@ var
   Rec: TVarRec;
 begin
   // result := AKey; Exit;
-  result := '';
-  result := gMsg(AKey, ASection);
-  if result = AKey then
-    Exit;
+  result := sStr;
   for i := 0 to High(Args) do
   begin
     Placeholder := '{' + IntToStr(i) + '}';
     Rec := Args[i];
     ValueStr := '';
-    case Rec.VType of
-      // --- LES VALEURS DIRECTES (Pas de pointeur) ---
-      vtInteger:
-        ValueStr := IntToStr(Rec.VInteger);
-      vtBoolean:
-        ValueStr := BoolToStr(Rec.VBoolean, True);
-      vtChar:
-        ValueStr := Rec.VChar;
-      // --- LES POINTEURS (On doit utiliser ^ pour lire la valeur) ---
-      vtInt64:
-        ValueStr := IntToStr(Rec.VInt64^);
-      // Pour les strings, on cast le pointeur vers le bon type de chaîne, puis on déréférence
-      vtString:
-        ValueStr := string(Rec.VString^);
-      vtAnsiString:
-        ValueStr := string(PAnsiString(Rec.VAnsiString^));
-      vtUnicodeString:
-        ValueStr := string(PWideChar(Rec.VPWideChar));
-      // Pour les nombres flottants (souvent des pointeurs dans TVarRec)
-      vtExtended:
-        ValueStr := FloatToStr(Rec.VExtended^);
-      { vtDouble:
-        ValueStr := FloatToStr(Rec.VDouble^); }
-    else
-      ValueStr := '';
+    try
+      case Rec.VType of
+        // --- LES VALEURS DIRECTES (Pas de pointeur) ---
+        vtInteger:
+          ValueStr := IntToStr(Rec.VInteger);
+        vtBoolean:
+          ValueStr := BoolToStr(Rec.VBoolean, True);
+        vtChar:
+          ValueStr := Rec.VChar;
+        // --- LES POINTEURS (On doit utiliser ^ pour lire la valeur) ---
+        vtInt64:
+          ValueStr := IntToStr(Rec.VInt64^);
+        // Pour les strings, on cast le pointeur vers le bon type de chaîne, puis on déréférence
+        vtString:
+          ValueStr := string(Rec.VString^);
+        vtAnsiString:
+          // ValueStr := string(PAnsiString(Rec.VAnsiString^));
+          ValueStr := string(Rec.VPChar);
+        vtUnicodeString:
+          ValueStr := string(Rec.VPWideChar);
+        // Pour les nombres flottants (souvent des pointeurs dans TVarRec)
+        vtExtended:
+          ValueStr := FloatToStr(Rec.VExtended^);
+        { vtDouble:
+          ValueStr := FloatToStr(Rec.VDouble^); }
+      else
+        ValueStr := '';
+      end;
+    except
+      ValueStr := '...';
     end;
     if Placeholder <> '' then
       result := StringReplace(result, Placeholder, ValueStr, [rfReplaceAll]);
   end;
+end;
+
+function TLangManager.gMsgFmt(const AKey: string; const Args: array of const;
+  const ASection: string = 'Messages'): string;
+begin
+  // result := AKey; Exit;
+  result := '';
+  result := gMsg(AKey, ASection);
+  if result = AKey then
+    Exit;
+  result := gStrFmt(result, Args);
 end;
 
 function TLangManager.GetMissingTranslations(AForm: TForm): TStrings;
@@ -807,4 +767,13 @@ begin
   end;
 end;
 
+initialization
+
+
+finalization
+  FreeAndNil(mLang);
+
+
 end.
+
+

@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, Grids, ExtCtrls, RichEdit, System.IOUtils,
-  Vcl.ComCtrls, uGGUFTypes, uGGMLTypes, uMath, uLangManager, Vcl.Menus;
+  System.UITypes, Vcl.ComCtrls, uGGUFTypes, uGGMLTypes, uMath, uLangManager, Vcl.Menus;
 
 type
   TStringGridAccess = class(TStringGrid);
@@ -27,7 +27,7 @@ type
     btnNext: TButton;
     btnNextAll: TButton;
     sgArray: TStringGrid;
-    cbArrType1: TComboBox;
+    cbArrType: TComboBox;
     lblArrType: TLabel;
     btnArrLoad: TButton;
     procedure FormCreate(Sender: TObject);
@@ -44,6 +44,7 @@ type
     procedure sgArraySetEditText(Sender: TObject; ACol, ARow: Integer; const Value: string);
     procedure FormShow(Sender: TObject);
     procedure cbArrTypeChange(Sender: TObject);
+    procedure cbArrTypeChange0(Sender: TObject);
   private
     FValue: TGGUFValue;
     FCurKey: String;
@@ -63,7 +64,7 @@ const
 
 implementation
 
-uses uAppConfig;
+uses uAppConfig, uLog, uStrUtils;
 
 {$R *.dfm}
 
@@ -77,11 +78,11 @@ begin
   FPageIndex := 0;
 
   // Afficher le type actuel et peupler la combo
-  cbArrType1.ItemIndex := cbArrType1.Items.IndexOf(GGUFTypeToStr(FValue.VArr.ElemType));
-  if cbArrType1.ItemIndex < 0 then
-    cbArrType1.ItemIndex := 0;
+  cbArrType.ItemIndex := cbArrType.Items.IndexOf(GGUFTypeToStr(FValue.VArr.ElemType));
+  if cbArrType.ItemIndex < 0 then
+    cbArrType.ItemIndex := 0;
   lblArrType.Visible := True;
-  cbArrType1.Visible := True;
+  cbArrType.Visible := True;
 
   LoadPage;
   if ShowModal = mrOk then
@@ -108,10 +109,10 @@ begin
   sgArray.RowHeights[0] := 24;
 
   // Peupler cbArrType avec tous les types GGUF
-  cbArrType1.Items.Clear;
+  cbArrType.Items.Clear;
   for VT := Integer(Low(TGGUFValueType)) to Integer(High(TGGUFValueType)) do
     if (VT <> Integer(gvt_None)) and (VT <> Integer(gvt_ARRAY)) then
-      cbArrType1.Items.Add(GGUFTypeToStr(TGGUFValueType(VT)));
+      cbArrType.Items.Add(GGUFTypeToStr(TGGUFValueType(VT)));
 end;
 
 procedure TfrmEditArrayDlg.FormShow(Sender: TObject);
@@ -119,13 +120,211 @@ begin
   LoadPage;
 end;
 
-procedure TfrmEditArrayDlg.cbArrTypeChange(Sender: TObject);
+procedure TfrmEditArrayDlg.cbArrTypeChange0(Sender: TObject);
+var
+  NewType, OldType: TGGUFValueType;
+  i, OldCount, ConvertedCount, ByteSize: Integer;
+  StrVal: string;
+  OldVal, NewVal: TGGUFValue;
+  ElemSize: Integer;
 begin
-  if Assigned(FValue) and Assigned(FValue.VArr) then
-  begin
-    FValue.VArr.ElemType := StrToGGUFType(cbArrType1.Text);
-    LoadPage; // Recharge pour appliquer le type au preview
+  if not Assigned(FValue) or not Assigned(FValue.VArr) then
+    Exit;
+
+  NewType := StrToGGUFType(cbArrType.Text);
+  if (NewType = gvt_None) or (NewType = FValue.VArr.ElemType) then
+    Exit; // Aucun changement
+
+  OldVal := FValue.Clone;
+  OldType := FValue.VArr.ElemType;
+  OldCount := FValue.VArr.Count;
+
+  // 1. Calculer la taille en octets du nouveau type
+  case NewType of
+    gvt_UINT8, gvt_INT8, gvt_BOOL:
+      ElemSize := 1;
+    gvt_UINT16, gvt_INT16:
+      ElemSize := 2;
+    gvt_UINT32, gvt_INT32, gvt_FLOAT32:
+      ElemSize := 4;
+    gvt_UINT64, gvt_INT64, gvt_FLOAT64:
+      ElemSize := 8;
+  else
+    ElemSize := 1;
   end;
+
+  // 2. Allouer le nouveau stockage
+  if NewType = gvt_STRING then
+  begin
+    FValue.VArr.StrItems := TStringList.Create;
+    FValue.VArr.StrItems.Capacity := OldCount;
+    FValue.VArr.IsStringArray := True;
+  end
+  else
+  begin
+    ByteSize := OldCount * ElemSize;
+    SetLength(FValue.VArr.DatItems, ByteSize); // Delphi initialise automatiquement à 0
+    FValue.VArr.IsStringArray := False;
+  end;
+
+  // 3. Conversion élément par élément (pont universel via String)
+  ConvertedCount := 0;
+  NewVal := TGGUFValue.Create;
+  try
+    for i := 0 to OldCount - 1 do
+    begin
+      // Récupérer la valeur actuelle sous forme de texte lisible
+      StrVal := OldVal.VArr.GetItemAsString(i);
+      // Tenter la conversion vers le nouveau type
+      if ParseStringValue(StrVal, NewType, NewVal) then
+      begin
+        if NewType = gvt_STRING then
+          FValue.VArr.StrItems.Add(string(NewVal.VStr))
+        else
+        begin
+          case NewType of
+            gvt_UINT8:
+              FValue.VArr.DatItems[i] := NewVal.VU8;
+            gvt_INT8:
+              FValue.VArr.DatItems[i] := Byte(NewVal.VI8);
+            gvt_UINT16:
+              Move(NewVal.VU16, FValue.VArr.DatItems[i * 2], 2);
+            gvt_INT16:
+              Move(NewVal.VI16, FValue.VArr.DatItems[i * 2], 2);
+            gvt_UINT32:
+              Move(NewVal.VU32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_INT32:
+              Move(NewVal.VI32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_UINT64:
+              Move(NewVal.VU64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_INT64:
+              Move(NewVal.VI64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_FLOAT32:
+              Move(NewVal.VF32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_FLOAT64:
+              Move(NewVal.VF64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_BOOL:
+              FValue.VArr.DatItems[i] := Byte(NewVal.VBool);
+          end;
+        end;
+        Inc(ConvertedCount);
+      end
+      else
+      begin
+        LogMsg('[Conversion] Échec de parsing : ' + GGUFTypeToStr(OldType) + '->' + GGUFTypeToStr(NewType))
+      end;
+    end;
+  finally
+    NewVal.Free;
+  end;
+  // Mettre à jour les métadonnées
+  FValue.VArr.ElemType := NewType;
+  LogMsg(Format('[Conversion] ✅ Terminée: %d/%d éléments convertis vers %s', [ConvertedCount, OldCount,
+   GGUFTypeToStr(NewType)]));
+  LoadPage; // Recharger l'UI avec le nouveau type et les données converties
+end;
+
+procedure TfrmEditArrayDlg.cbArrTypeChange(Sender: TObject);
+var
+  NewType : TGGUFValueType;
+  i, OldCount, NewElemSize, ByteSize: Integer;
+  StrValues: TArray<string>; // Tampon temporaire
+  NewVal: TGGUFValue;
+begin
+  if not Assigned(FValue) or not Assigned(FValue.VArr) then
+    Exit;
+  if FValue.VArr.Count = 0 then
+    Exit; // Rien à convertir
+
+  NewType := StrToGGUFType(cbArrType.Text);
+  if (NewType = gvt_None) or (NewType = FValue.VArr.ElemType) then
+    Exit;
+
+  // OldType := FValue.VArr.ElemType;
+  OldCount := FValue.VArr.Count;
+
+  // EXTRAIRE TOUTES les valeurs en texte AVANT de toucher à la mémoire
+  SetLength(StrValues, OldCount);
+  for i := 0 to OldCount - 1 do
+    StrValues[i] := FValue.VArr.GetItemAsString(i); // Lit depuis l'ancien buffer (type/size anciens)
+
+  // LIBÉRER l'ancien stockage
+  if FValue.VArr.IsStringArray then
+    FValue.VArr.StrItems.Free
+  else
+    FValue.VArr.DatItems := nil; // Libère la mémoire du tableau old
+  FValue.VArr.IsStringArray := False;
+
+  case NewType of
+    gvt_UINT8, gvt_INT8, gvt_BOOL:
+      NewElemSize := 1;
+    gvt_UINT16, gvt_INT16:
+      NewElemSize := 2;
+    gvt_UINT32, gvt_INT32, gvt_FLOAT32:
+      NewElemSize := 4;
+    gvt_UINT64, gvt_INT64, gvt_FLOAT64:
+      NewElemSize := 8;
+  else
+    NewElemSize := 1;
+  end;
+
+  if NewType = gvt_STRING then
+  begin
+    FValue.VArr.StrItems := TStringList.Create;
+    FValue.VArr.StrItems.Capacity := OldCount;
+    FValue.VArr.IsStringArray := True;
+  end
+  else
+  begin
+    ByteSize := OldCount * NewElemSize;
+    SetLength(FValue.VArr.DatItems, ByteSize);
+    FValue.VArr.IsStringArray := False;
+  end;
+
+  NewVal := TGGUFValue.Create;
+  try
+    for i := 0 to OldCount - 1 do
+    begin
+      if ParseStringValue(StrValues[i], NewType, NewVal) then
+      begin
+        if NewType = gvt_STRING then
+          FValue.VArr.StrItems.Add(string(NewVal.VStr))
+        else
+        begin
+          case NewType of
+            gvt_UINT8:
+              FValue.VArr.DatItems[i] := NewVal.VU8;
+            gvt_INT8:
+              FValue.VArr.DatItems[i] := Byte(NewVal.VI8);
+            gvt_UINT16:
+              Move(NewVal.VU16, FValue.VArr.DatItems[i * 2], 2);
+            gvt_INT16:
+              Move(NewVal.VI16, FValue.VArr.DatItems[i * 2], 2);
+            gvt_UINT32:
+              Move(NewVal.VU32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_INT32:
+              Move(NewVal.VI32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_UINT64:
+              Move(NewVal.VU64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_INT64:
+              Move(NewVal.VI64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_FLOAT32:
+              Move(NewVal.VF32, FValue.VArr.DatItems[i * 4], 4);
+            gvt_FLOAT64:
+              Move(NewVal.VF64, FValue.VArr.DatItems[i * 8], 8);
+            gvt_BOOL:
+              FValue.VArr.DatItems[i] := Byte(NewVal.VBool);
+          end;
+        end;
+      end;
+    end;
+  finally
+    NewVal.Free;
+    SetLength(StrValues, 0);
+  end;
+
+  FValue.VArr.ElemType := NewType;
+  LoadPage;
 end;
 
 procedure TfrmEditArrayDlg.LoadPage;
@@ -134,7 +333,8 @@ var
 begin
   if not Assigned(FValue) or not Assigned(FValue.VArr) then
     Exit;
-  Count := FValue.VArr.Items.Count;
+
+  Count := FValue.VArr.Count;
   startIdx := FPageIndex * PAGE_SIZE;
   if startIdx >= Count then
   begin
@@ -153,7 +353,7 @@ begin
     for i := 0 to (endIdx - startIdx) do
     begin
       sgArray.Cells[0, i + 1] := IntToStr(startIdx + i);
-      sgArray.Cells[1, i + 1] := FValue.VArr.Items[startIdx + i];
+      sgArray.Cells[1, i + 1] := EscapeJSONString(FValue.VArr.GetItemAsString(startIdx + i));
     end;
   finally
     sgArray.EndUpdate;
@@ -168,7 +368,7 @@ end;
 function TfrmEditArrayDlg.GetTotalPages: Integer;
 begin
   if Assigned(FValue.VArr) then
-    Result := Max(1, Ceil(FValue.VArr.Items.Count / PAGE_SIZE))
+    Result := Max(1, Ceil(FValue.VArr.Count / PAGE_SIZE))
   else
     Result := 1;
 end;
@@ -180,7 +380,7 @@ end;
 
 procedure TfrmEditArrayDlg.sgArraySelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
 begin
-  if (ARow > 0) and Assigned(FValue.VArr) and (ARow > FValue.VArr.Items.Count - (FPageIndex * PAGE_SIZE)) then
+  if (ARow > 0) and Assigned(FValue.VArr) and (ARow > FValue.VArr.Count - (FPageIndex * PAGE_SIZE)) then
     CanSelect := False;
 end;
 
@@ -191,8 +391,8 @@ begin
   if (ARow > 0) and Assigned(FValue.VArr) then
   begin
     RealIdx := (FPageIndex * PAGE_SIZE) + (ARow - 1);
-    if (RealIdx >= 0) and (RealIdx < FValue.VArr.Items.Count) then
-      FValue.VArr.Items[RealIdx] := Value;
+    if (RealIdx >= 0) and (RealIdx < FValue.VArr.Count) then
+      FValue.VArr.SetItemValue(RealIdx, Value);
   end;
 end;
 
@@ -200,7 +400,9 @@ procedure TfrmEditArrayDlg.btnStrSaveAsClick(Sender: TObject);
 begin
   if not Assigned(FValue) or not Assigned(FValue.VArr) then
     Exit;
-  SaveDialog1.FileName := cfg.edtSrc1 + FCurKey + '.txt';
+  SaveDialog1.InitialDir := ExtractFilePath(cfg.edtSrc1);
+  // SaveDialog1.FileName := cfg.edtSrc1 + FCurKey + '.txt';
+  SaveDialog1.FileName := cfg.edtSrc1 + SafeFileName(FCurKey) + '.txt';
   if SaveDialog1.Execute then
   begin
     try
@@ -239,7 +441,7 @@ begin
     if Assigned(FValue) and Assigned(FValue.VArr) then
       FValue.VArr.LoadFromText(S);
     // Synchroniser le type avec la combo
-    cbArrType1.ItemIndex := cbArrType1.Items.IndexOf(GGUFTypeToStr(FValue.VArr.ElemType));
+    cbArrType.ItemIndex := cbArrType.Items.IndexOf(GGUFTypeToStr(FValue.VArr.ElemType));
     LoadPage;
   except
     on E: Exception do

@@ -3,8 +3,8 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls,
-  ExtCtrls, uGGUFTypes, uGGUFModel, uKVsGGUFConst, uGgufStrUtils, System.StrUtils;
+  Windows, Messages, SysUtils, Classes, Controls, Forms, Dialogs, StdCtrls, System.UITypes,
+  ExtCtrls, uGGUFTypes, uGGUFModel, uKVsGGUFConst, uStrUtils, System.StrUtils;
 
 type
   TfrmEditNewKV = class(TForm)
@@ -46,13 +46,14 @@ uses uEditKVsGGUF, uLangManager;
 
 procedure TfrmEditNewKV.FormShow(Sender: TObject);
 var
-  i, VT: Integer;
+  VT: Integer;
 begin
   cbType.Items.Clear;
   { TGGUFValueType = (gvt_None = -1, gvt_UINT8 = 0, gvt_INT8 = 1, gvt_UINT16 = 2, gvt_INT16 = 3, gvt_UINT32 = 4,
     gvt_INT32 = 5, gvt_FLOAT32 = 6, gvt_BOOL = 7, gvt_STRING = 8, gvt_ARRAY = 9, gvt_UINT64 = 10, gvt_INT64 = 11,
     gvt_FLOAT64 = 12); }
   cbType.Items.Clear;
+  cbArrType.Items.Clear;
   for VT := Integer(Low(TGGUFValueType)) to Integer(High(TGGUFValueType)) do
     cbType.Items.Add(GGUFTypeToStr(TGGUFValueType(VT)));
   cbType.ItemIndex := cbType.Items.IndexOf('STRING');
@@ -147,7 +148,10 @@ begin
     newGGUFValue := TGGUFValue.Create;
     newGGUFValue.ValueType := gvt_ARRAY;
     newGGUFValue.VArr := TGGUFArray.Create;
-    newGGUFValue.VArr.ElemType := TGGUFValueType(cbArrType.ItemIndex);
+    // cbArrType est remplie en sautant gvt_None et gvt_ARRAY, donc l'index ≠ la valeur d'enum.
+    newGGUFValue.VArr.ElemType := StrToGGUFType(cbArrType.Text); // TGGUFValueType(cbArrType.ItemIndex);
+    if newGGUFValue.VArr.ElemType = gvt_None then
+      newGGUFValue.VArr.ElemType := gvt_FLOAT32;
     newGGUFValue.VArr.LoadFromText(sValue);
   end
   else
